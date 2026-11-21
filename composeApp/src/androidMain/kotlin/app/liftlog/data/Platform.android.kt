@@ -1,0 +1,18 @@
+package app.liftlog.data
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+
+@Composable
+actual fun KeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
+    }
+}
+
+@Composable
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)

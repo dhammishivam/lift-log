@@ -1,0 +1,14 @@
+CREATE TABLE doc (
+    id TEXT NOT NULL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    body TEXT NOT NULL
+);
+
+selectAll:
+SELECT * FROM doc;
+
+upsert:
+INSERT OR REPLACE INTO doc(id, kind, body) VALUES (?, ?, ?);
+
+deleteById:
+DELETE FROM doc WHERE id = ?;
