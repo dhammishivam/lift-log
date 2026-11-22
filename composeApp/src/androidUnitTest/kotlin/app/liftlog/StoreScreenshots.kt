@@ -2,13 +2,10 @@ package app.liftlog
 
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import app.cash.sqldelight.db.SqlDriver
@@ -79,7 +76,13 @@ class StoreScreenshots {
 
     private fun shot(name: String) {
         pump(600)
-        val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
+        // Draw the window directly: captureToImage() waits for an idle UI, and the app's clock never idles.
+        var bmp: Bitmap? = null
+        rule.runOnUiThread {
+            val v = rule.activity.window.decorView
+            bmp = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888).also { v.draw(android.graphics.Canvas(it)) }
+        }
+        val bmp = bmp!!
         FileOutputStream(File(out, "$name.png")).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         println("Saved ${out.path}/$name.png ${bmp.width}x${bmp.height}")
     }
