@@ -124,13 +124,13 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     /* ---------- rest alert while the app is in the background ---------- */
     private var restEnd: Long? = null
     private var foreground = true
-    private var askedNotif = false
+    private val prefs by lazy { ctx.getSharedPreferences("liftlog", Context.MODE_PRIVATE) }
 
     override fun setRestEnd(atMillis: Long?) {
         restEnd = atMillis
-        if (atMillis != null && !askedNotif && Build.VERSION.SDK_INT >= 33 &&
+        if (atMillis != null && !prefs.getBoolean("askedNotif", false) && Build.VERSION.SDK_INT >= 33 &&
             act.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            askedNotif = true; permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            prefs.edit().putBoolean("askedNotif", true).apply(); permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         if (!foreground) schedule()
     }
