@@ -55,7 +55,7 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "app.liftlog"
+        applicationId = "com.krishiv.liftlog"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         // CI passes its run number so every uploaded build has a higher version code.

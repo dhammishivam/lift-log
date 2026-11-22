@@ -1,7 +1,7 @@
 # Generate the Xcode project with XcodeGen:  brew install xcodegen && cd iosApp && xcodegen
 name: LiftLog
 options:
-  bundleIdPrefix: app.liftlog
+  bundleIdPrefix: com.krishiv
   deploymentTarget:
     iOS: "16.0"
 targets:
@@ -19,7 +19,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.liftlog
+        PRODUCT_BUNDLE_IDENTIFIER: com.krishiv.liftlog
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         OTHER_LDFLAGS: ["-lsqlite3"]
