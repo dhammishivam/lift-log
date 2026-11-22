@@ -65,7 +65,7 @@ fun WorkoutTab(st: AppState) {
             ChipRowSpaced {
                 Btn("Plate calculator", { st.push(Screen.Plate("")) }, small = true)
                 Btn("1RM calculator", { st.push(Screen.Orm) }, small = true)
-                Btn("Ask the coach", { st.push(Screen.Coach) }, small = true, icon = Ic.chat)
+                if (st.platform.coachEnabled) Btn("Ask the coach", { st.push(Screen.Coach) }, small = true, icon = Ic.chat)
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Label("Routines", Modifier.weight(1f))

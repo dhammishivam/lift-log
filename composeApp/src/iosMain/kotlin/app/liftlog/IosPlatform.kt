@@ -16,6 +16,11 @@ import org.jetbrains.skia.Image
  */
 class IosPlatform : Platform {
     override val name = "iOS"
+    override val appVersion: String = (platform.Foundation.NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String) ?: "1.0.0"
+    override val coachEnabled = true
+    override fun openUrl(url: String) {
+        platform.Foundation.NSURL.URLWithString(url)?.let { platform.UIKit.UIApplication.sharedApplication.openURL(it, emptyMap<Any?, Any>(), null) }
+    }
     override fun sqlDriver(): SqlDriver = NativeSqliteDriver(LiftDb.Schema, "liftlog.db")
 
     override suspend fun pickTextFiles(): List<Pair<String, String>> = emptyList() // TODO: UIDocumentPickerViewController

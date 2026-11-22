@@ -37,6 +37,11 @@ import java.util.UUID
 
 class AndroidPlatform(private val act: ComponentActivity) : Platform {
     override val name = "Android"
+    override val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+    override val coachEnabled = BuildConfig.COACH
+    override fun openUrl(url: String) {
+        runCatching { act.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
     private val ctx: Context get() = act.applicationContext
 
     private var openDocs: CompletableDeferred<List<Uri>>? = null

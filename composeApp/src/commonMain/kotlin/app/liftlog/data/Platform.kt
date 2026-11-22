@@ -7,6 +7,12 @@ import app.cash.sqldelight.db.SqlDriver
 /** Everything the shared code needs from the phone. Android implements it now; iOS has a starter implementation. */
 interface Platform {
     val name: String
+    /** App version shown in Settings, e.g. "1.0.0 (12)". */
+    val appVersion: String
+    /** False in Play builds until the AI coach has an in-app report button. */
+    val coachEnabled: Boolean
+    /** Opens a web page in the browser. */
+    fun openUrl(url: String)
     fun sqlDriver(): SqlDriver
 
     /** Lets the user pick text files (CSV/JSON). Returns (file name, contents). */

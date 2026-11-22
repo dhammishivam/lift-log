@@ -240,15 +240,24 @@ fun SettingsScreenView(st: AppState) {
             BoxCard("Export", "Workouts use Hevy's CSV format, so they open in Hevy, Strong or any spreadsheet. The full backup restores here or in the Lift Log web app.") {
                 FlowRowX { Btn("Workouts CSV", { st.export("w") }); Btn("Measurements CSV", { st.export("m") }); Btn("Full backup", { st.export("b") }) }
             }
-            BoxCard("Coach", "The coach uses your own Anthropic API key, stored only on this phone. Get one at console.anthropic.com.") {
+            if (st.platform.coachEnabled) BoxCard("Coach", "The coach uses your own Anthropic API key, stored only on this phone. Get one at console.anthropic.com.") {
                 Field("API key", key, { key = it }, placeholder = "sk-ant-…")
                 Field("Model (optional)", model, { model = it }, placeholder = DEFAULT_MODEL)
                 Btn("Save", { st.setSettings { it.copy(apiKey = key.trim().ifEmpty { null }, model = model.trim().ifEmpty { null }) }; st.say("Coach settings saved") }, small = true)
+            }
+            BoxCard("About", "Lift Log ${st.platform.appVersion}. Your workouts, routines and measurements are stored only on this phone.") {
+                FlowRowX {
+                    Btn("Privacy policy", { st.platform.openUrl(PRIVACY_URL) }, small = true)
+                    Btn("Source code", { st.platform.openUrl(SOURCE_URL) }, small = true)
+                }
             }
             Mu("${st.idx.ws.size} workouts · ${st.idx.rs.size} routines · ${st.idx.ms.size} measurement entries. Everything is stored on this phone (${st.platform.name}).", Modifier.padding(top = 8.dp))
         }
     }
 }
+
+const val PRIVACY_URL = "https://dhammishivam.github.io/lift-log/privacy.html"
+const val SOURCE_URL = "https://github.com/dhammishivam/lift-log"
 
 /* ---------- plate calculator ---------- */
 private val PCOL = mapOf(25.0 to 0xFFD6312B, 20.0 to 0xFF2A62D4, 15.0 to 0xFFE8B100, 10.0 to 0xFF2F9E44, 5.0 to 0xFFE9ECEF, 2.5 to 0xFF343A40, 1.25 to 0xFFADB5BD, 45.0 to 0xFF2A62D4, 35.0 to 0xFFE8B100)

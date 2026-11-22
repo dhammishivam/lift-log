@@ -58,15 +58,35 @@ android {
         applicationId = "app.liftlog"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
+        // CI passes its run number so every uploaded build has a higher version code.
+        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0.0"
+    }
+    buildFeatures { buildConfig = true }
+    // Release signing comes from CI secrets; without them the release build is unsigned (fine for checks).
+    val ks = System.getenv("UPLOAD_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (ks != null) create("upload") {
+            storeFile = ks
+            storePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
+            keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
+        }
     }
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }
     buildTypes {
+        getByName("debug") {
+            buildConfigField("boolean", "COACH", "true")
+        }
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // The AI coach stays out of Play builds until it has an in-app report button (Play's AI-generated content policy).
+            buildConfigField("boolean", "COACH", "false")
+            if (ks != null) signingConfig = signingConfigs.getByName("upload")
         }
     }
     compileOptions {
