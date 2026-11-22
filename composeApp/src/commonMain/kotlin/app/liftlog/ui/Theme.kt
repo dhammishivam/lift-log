@@ -34,8 +34,8 @@ val LocalPal = staticCompositionLocalOf { LightPal }
 val LocalLb = staticCompositionLocalOf { false }
 
 @Composable
-fun LiftTheme(lb: Boolean, content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+fun LiftTheme(lb: Boolean, theme: String?, content: @Composable () -> Unit) {
+    val dark = when (theme) { "light" -> false; "system" -> isSystemInDarkTheme(); else -> true }
     val p = if (dark) DarkPal else LightPal
     val scheme = if (dark) darkColorScheme(primary = p.ac, background = p.bg, surface = p.bg, onSurface = p.ink, onBackground = p.ink)
     else lightColorScheme(primary = p.ac, background = p.bg, surface = p.bg, onSurface = p.ink, onBackground = p.ink)

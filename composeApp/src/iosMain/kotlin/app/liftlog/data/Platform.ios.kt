@@ -15,3 +15,7 @@ actual fun KeepScreenOn(enabled: Boolean) {
 /** iOS uses the swipe-back gesture of the screens themselves; nothing to hook here. */
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {}
+
+/** The status bar follows the host view controller; nothing to do here yet. */
+@Composable
+actual fun SystemBars(dark: Boolean) {}

@@ -205,6 +205,13 @@ fun SettingsScreenView(st: AppState) {
     Column(Modifier.fillMaxSize()) {
         TopBar("Settings", left = { IconBtn(Ic.x, "Close", { st.pop() }) })
         Body {
+            val (hd, ht) = hevyProgress(st)
+            BoxCard("Move from Hevy", if (hd == 0) "Bring your workouts, measurements and routines over from Hevy, step by step." else "$hd of $ht steps done.") {
+                Btn(if (hd == 0) "Start" else if (hd == ht) "Review" else "Continue", { st.push(Screen.HevyGuide) }, kind = if (hd < ht) BtnKind.Primary else BtnKind.Plain)
+            }
+            BoxCard("Theme", "Dark is the default. System follows your phone's setting.") {
+                Seg(listOf("dark" to "Dark", "light" to "Light", "system" to "System"), set.theme ?: "dark", { t -> st.setSettings { it.copy(theme = t) } })
+            }
             BoxCard("Units", "Weights everywhere, including your history and bodyweight.") {
                 Seg(listOf("kg" to "kg", "lb" to "lb"), if (lb) "lb" else "kg", { u -> st.setSettings { it.copy(unit = u) } })
             }

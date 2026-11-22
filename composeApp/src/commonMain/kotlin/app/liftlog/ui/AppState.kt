@@ -35,6 +35,7 @@ sealed class Screen {
     class Plate(w: String) : Screen() { var w by mutableStateOf(w); var bar by mutableStateOf<Double?>(null) }
     object Orm : Screen()
     object Coach : Screen()
+    object HevyGuide : Screen()
     class PinEditor(val eid: String, t: String) : Screen() { var t by mutableStateOf(t) }
 }
 

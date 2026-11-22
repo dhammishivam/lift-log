@@ -18,6 +18,7 @@ import app.liftlog.data.KeepScreenOn
 import app.liftlog.data.Platform
 import app.liftlog.data.PlatformBackHandler
 import app.liftlog.data.Store
+import app.liftlog.data.SystemBars
 import app.liftlog.logic.clock
 import kotlinx.coroutines.delay
 
@@ -26,8 +27,9 @@ fun App(platform: Platform) {
     val scope = rememberCoroutineScope()
     val store = remember { Store(platform, scope) }
     val st = remember { AppState(platform, store, scope) }
-    LiftTheme(lb = st.lb) {
+    LiftTheme(lb = st.lb, theme = st.data.settings.theme) {
         val p = LocalPal.current
+        SystemBars(p.dark)
         LaunchedEffect(Unit) { while (true) { st.tick(); delay(250) } }
         val focus = LocalFocusManager.current
         // Close the keyboard whenever the visible screen changes.
@@ -85,6 +87,7 @@ private fun ScreenHost(st: AppState, s: Screen) {
         is Screen.Orm -> OrmScreen(st)
         is Screen.Coach -> CoachScreen(st)
         is Screen.PinEditor -> PinEditorScreen(st, s)
+        is Screen.HevyGuide -> HevyGuideScreen(st)
     }
 }
 

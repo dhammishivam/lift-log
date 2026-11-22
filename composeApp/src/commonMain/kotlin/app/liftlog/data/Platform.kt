@@ -32,3 +32,7 @@ expect fun KeepScreenOn(enabled: Boolean)
 /** System back button / gesture. */
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)
+
+/** Light or dark status and navigation bar icons to match the app theme. */
+@Composable
+expect fun SystemBars(dark: Boolean)

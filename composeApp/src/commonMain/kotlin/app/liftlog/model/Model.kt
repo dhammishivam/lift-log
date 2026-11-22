@@ -115,6 +115,10 @@ data class Settings(
     val awake: Boolean? = null,
     val bwv: Boolean? = null,
     val goal: Int? = null,
+    /** "dark" (default when null), "light" or "system". */
+    val theme: String? = null,
+    /** Steps of the Move from Hevy guide the user has ticked off. */
+    val hevy: List<String>? = null,
     /** App only: Anthropic API key and model for the coach. Never exported. */
     val apiKey: String? = null,
     val model: String? = null,
