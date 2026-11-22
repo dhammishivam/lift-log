@@ -173,7 +173,7 @@ private fun MusclesView(st: AppState) {
     val rows = cnt.entries.sortedByDescending { it.value }; val mx = maxOf(1, rows.maxOfOrNull { it.value } ?: 0); val tot = rows.sumOf { it.value }; val wk = days / 7.0
     ChipRow { listOf(7 to "7 days", 30 to "30 days", 90 to "90 days").forEach { (k, l) -> Chip(l, st.mu == k) { st.mu = k } } }
     Big("$tot sets", Modifier.padding(top = 12.dp))
-    Mu("Working sets in the last $days days" + if (days > 7) " · about ${fmtN((tot / wk).roundToInt().toDouble())} a week" else "")
+    Mu("Working sets in the last $days days" + if (days > 7) " · about ${(tot / wk).let { r -> fmtN(if (r < 10) (r * 10).roundToInt() / 10.0 else r.roundToInt().toDouble()) }} a week" else "")
     if (rows.isNotEmpty()) BodyMap(cnt)
     rows.forEach { (m, v) ->
         val pv = pc[m] ?: 0; val dv = v - pv

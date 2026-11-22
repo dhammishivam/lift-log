@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -169,7 +170,8 @@ fun ExerciseCard(st: AppState, ctx: CardCtx, ei: Int, ssi: Pair<Char, Long>?) {
                 if (tm) Box(Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(if (run) p.ac else p.s2).clickable { toggleTimer(st, ei, si) }, contentAlignment = Alignment.Center) {
                     Icon(if (run) Ic.stop else Ic.play, if (run) "Stop timer" else "Start timer", Modifier.size(18.dp), tint = if (run) Color.White else p.ac)
                 }
-                if (live) Box(Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(if (done) p.ok else p.s2).clickable { checkSet(st, ei, si) }, contentAlignment = Alignment.Center) {
+                val focus = LocalFocusManager.current
+                if (live) Box(Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(if (done) p.ok else p.s2).clickable { focus.clearFocus(); checkSet(st, ei, si) }, contentAlignment = Alignment.Center) {
                     Icon(Ic.check, "Complete set", Modifier.size(20.dp), tint = if (done) Color.White else p.mu)
                 }
             }

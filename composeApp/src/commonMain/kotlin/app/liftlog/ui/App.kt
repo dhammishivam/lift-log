@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,9 @@ fun App(platform: Platform) {
     LiftTheme(lb = st.lb) {
         val p = LocalPal.current
         LaunchedEffect(Unit) { while (true) { st.tick(); delay(250) } }
+        val focus = LocalFocusManager.current
+        // Close the keyboard whenever the visible screen changes.
+        LaunchedEffect(st.stack.size, st.tab) { focus.clearFocus() }
         KeepScreenOn(st.liveOpen() && st.data.settings.awake != false)
         Box(Modifier.fillMaxSize().background(p.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
             if (!store.loaded) {
