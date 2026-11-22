@@ -97,7 +97,7 @@ class StoreScreenshots {
         tap("Resume"); shot("02-live-workout")
         back()
         tap("History"); shot("03-history")
-        tap("Exercises"); tap("Bench Press (Barbell)"); shot("04-exercise-progress")
+        tap("Exercises"); tap("Squat (Barbell)"); shot("04-exercise-progress")
         back()
         tap("Body"); shot("05-measurements")
     }
