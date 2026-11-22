@@ -36,6 +36,15 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // Store screenshots: real Compose screens rendered on the JVM by Robolectric.
+        val androidUnitTest by getting {
+            dependencies {
+                implementation("org.robolectric:robolectric:4.14.1")
+                implementation("androidx.compose.ui:ui-test-junit4:1.8.2")
+                implementation("androidx.test:core:1.6.1")
+                implementation("junit:junit:4.13.2")
+            }
+        }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.exifinterface)
@@ -63,6 +72,7 @@ android {
         versionName = "1.0.0"
     }
     buildFeatures { buildConfig = true }
+    testOptions { unitTests { isIncludeAndroidResources = true } }
     // Release signing comes from CI secrets; without them the release build is unsigned (fine for checks).
     val ks = System.getenv("UPLOAD_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
     signingConfigs {
@@ -112,4 +122,9 @@ tasks.withType<Test>().configureEach {
     afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({ desc, result ->
         if (desc.parent == null) println("Unit tests: ${result.testCount} run, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped")
     }))
+}
+
+dependencies {
+    // Registers the empty test activity that Compose UI tests render into.
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.8.2")
 }
