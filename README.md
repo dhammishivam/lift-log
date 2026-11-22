@@ -2,7 +2,7 @@
 
 An offline workout tracker: workout logging, routines, history, progress and body measurements, with no social features. Built with **Kotlin Multiplatform + Compose Multiplatform**, so the same UI and logic ship to Android now and iOS later.
 
-It's the native companion to the Lift Log web app. Both use the same data format, so a backup made in one restores in the other.
+It's the native companion to the Lift Log web app, whose source is in `web/index.html` (a single self-contained page published as a Claude artifact). Both use the same data format, so a backup made in one restores in the other.
 
 ## Features
 
@@ -12,6 +12,8 @@ It's the native companion to the Lift Log web app. Both use the same data format
 - **Exercises:** a 111-exercise library with Hevy-compatible names and form cues, plus custom exercises. Each exercise has progress charts (with two-exercise compare), PRs, best weight by rep count and stall warnings.
 - **Measurements:** weight, body fat and tape measurements, with charts and progress photos.
 - **Tools:** plate calculator, 1RM calculator, kg/lb switch, bodyweight-in-volume option, keep-screen-on.
+- **Theme:** dark by default, with Light and System options in Settings.
+- **Move from Hevy:** a seven-step guide in Settings (export from Hevy, import, units, routines, settings, what doesn't carry over, check and cancel). Import and routine steps tick themselves once the data is in.
 - **Import and export:** imports Hevy CSV (workouts and measurements) and Lift Log JSON backups; exports Hevy-format CSV and JSON backups.
 - **Coach:** answers questions using your own Anthropic API key, stored only on the phone.
 
@@ -33,6 +35,7 @@ composeApp/src/commonMain   shared: model, SQLDelight storage, logic (stats, imp
 composeApp/src/androidMain  Activity, file/photo pickers, rest alarm notification, keep-screen-on
 composeApp/src/iosMain      UIViewController entry point and iOS platform starter
 iosApp/                     XcodeGen spec and SwiftUI host
+web/index.html              the Lift Log web app (same features, data in your Claude account)
 ```
 
 Data is stored as JSON documents in a single SQLite table. Each document is a workout, routine, custom exercise, measurement, setting, pin or the active workout, in the same shape the web app uses, so cloud sync can be added later without migrating anything.
