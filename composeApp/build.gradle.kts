@@ -115,6 +115,7 @@ sqldelight {
 
 // Print a one-line test summary in CI logs and show failures in full.
 tasks.withType<Test>().configureEach {
+    systemProperty("liftlog.screenshots", (project.findProperty("screenshots") ?: "false").toString())
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

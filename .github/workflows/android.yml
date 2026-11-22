@@ -66,6 +66,10 @@ jobs:
           cp composeApp/build/outputs/bundle/release/composeApp-release.aab LiftLog-release.aab
           gh release view play-upload >/dev/null 2>&1 || gh release create play-upload --draft --title "Play upload" --notes "Signed release bundle for Play Console. Draft: not public."
           gh release upload play-upload LiftLog-release.aab --clobber
+      - name: Render store screenshots
+        id: shots
+        continue-on-error: true
+        run: ./gradlew :composeApp:testDebugUnitTest --tests 'app.liftlog.StoreScreenshots' -Pscreenshots=true
       - name: Attach store screenshots to the draft release
         if: github.ref == 'refs/heads/main' && hashFiles('composeApp/build/store-screenshots/*.png') != ''
         env:

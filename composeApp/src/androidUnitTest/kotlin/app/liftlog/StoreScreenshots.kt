@@ -64,7 +64,7 @@ class StoreScreenshots {
 
     private fun waitForText(text: String) {
         repeat(80) {
-            if (rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) return
+            if (rule.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) return
             pump(100)
         }
         error("'$text' never appeared")
@@ -72,7 +72,7 @@ class StoreScreenshots {
 
     private fun back() { rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; pump() }
 
-    private fun tap(text: String) { waitForText(text); rule.onAllNodesWithText(text).onFirst().performClick(); pump() }
+    private fun tap(text: String) { waitForText(text); rule.onAllNodesWithText(text, useUnmergedTree = true).onFirst().performClick(); pump() }
 
     private fun shot(name: String) {
         pump(600)
@@ -88,6 +88,8 @@ class StoreScreenshots {
     }
 
     @Test fun storeScreenshots() {
+        // Runs only when asked (-Pscreenshots=true), so it never blocks a normal build.
+        org.junit.Assume.assumeTrue(System.getProperty("liftlog.screenshots") == "true")
         rule.mainClock.autoAdvance = false
         rule.setContent { App(DemoPlatform(DemoData.docs())) }
         waitForText("Resume")
