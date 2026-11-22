@@ -46,7 +46,6 @@ fg = f'''<?xml version="1.0" encoding="utf-8"?>
     </group>
 </vector>
 '''
-open(sys.argv[1], "w").write(fg)
 
 def render(size, scale_glyph, bg=(13, 14, 16), fg=(61, 132, 255), ss=4):
     S = size * ss
@@ -62,6 +61,8 @@ def render(size, scale_glyph, bg=(13, 14, 16), fg=(61, 132, 255), ss=4):
             d.polygon([tf(*q) for q in hole.coords], fill=bg)
     return im.resize((size, size), Image.LANCZOS)
 
-render(512, 0.8).save(sys.argv[2])          # Play Store icon (Play rounds the corners itself)
-render(1024, 1.0).save(sys.argv[3])          # preview at the original framing
-print(len(pd), "chars of path data")
+if __name__ == "__main__":
+    open(sys.argv[1], "w").write(fg)
+    render(512, 0.8).save(sys.argv[2])   # Play Store icon (Play rounds the corners itself)
+    render(1024, 1.0).save(sys.argv[3])  # preview at the original framing
+    print(len(pd), "chars of path data")
