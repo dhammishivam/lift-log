@@ -18,7 +18,7 @@ import app.liftlog.model.RESTS
 import app.liftlog.model.Routine
 
 /** One step of the Move from Hevy guide. [auto] marks it done from the data itself. */
-private class Step(val id: String, val title: String, val text: String, val auto: Boolean = false)
+private class Step(val id: String, val title: String, val text: String, val auto: Boolean = false, val autoOnly: Boolean = false)
 
 /** The steps in order; the same list is shown in the Settings summary card. */
 private fun steps(st: AppState): List<Step> {
@@ -30,13 +30,13 @@ private fun steps(st: AppState): List<Step> {
         Step("import", "Import both files here",
             if (hevyWorkouts > 0) "$hevyWorkouts Hevy workouts and ${idx.ms.size} measurement entries are in Lift Log. Importing the same file again won't create duplicates."
             else "Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.",
-            auto = hevyWorkouts > 0),
+            auto = hevyWorkouts > 0, autoOnly = true),
         Step("units", "Check your units",
             "Hevy's export is always in kg. Lift Log converts on screen, so pick what you lift in."),
         Step("routines", "Get your routines back",
             if (idx.rs.isNotEmpty()) "You have ${idx.rs.size} routine${if (idx.rs.size == 1) "" else "s"}. Edit them from the Workout tab to set rep targets, rest timers and folders."
             else "Hevy's export doesn't include saved routines. Lift Log rebuilds one for each workout name you used 3+ times in the last 4 months, from its latest session. You can also create them by hand.",
-            auto = idx.rs.isNotEmpty()),
+            auto = idx.rs.isNotEmpty(), autoOnly = true),
         Step("prefs", "Match your Hevy settings",
             "Set the default rest timer and a weekly goal. Weight suggestions and keep-screen-on are in Settings too."),
         Step("gaps", "Know what doesn't come over",
@@ -49,14 +49,14 @@ private fun steps(st: AppState): List<Step> {
 /** How many guide steps are done, for the Settings card. */
 fun hevyProgress(st: AppState): Pair<Int, Int> {
     val s = steps(st); val done = st.data.settings.hevy.orEmpty()
-    return s.count { it.auto || it.id in done } to s.size
+    return s.count { it.auto || (!it.autoOnly && it.id in done) } to s.size
 }
 
 @Composable
 fun HevyGuideScreen(st: AppState) {
     val set = st.data.settings; val lb = LocalLb.current
     val all = steps(st); val done = set.hevy.orEmpty()
-    fun isDone(s: Step) = s.auto || s.id in done
+    fun isDone(s: Step) = s.auto || (!s.autoOnly && s.id in done)
     fun toggle(id: String) = st.setSettings { it.copy(hevy = (it.hevy.orEmpty()).let { l -> if (id in l) l - id else l + id }) }
     val (n, total) = hevyProgress(st)
     Column(Modifier.fillMaxSize()) {
@@ -91,7 +91,7 @@ fun HevyGuideScreen(st: AppState) {
                             Btn("Save full backup", { st.export("b") })
                         }
                     }
-                    if (!s.auto) Btn(if (isDone(s)) "Done" else "Mark as done", { toggle(s.id) }, Modifier.padding(top = 10.dp),
+                    if (!s.autoOnly) Btn(if (isDone(s)) "Done" else "Mark as done", { toggle(s.id) }, Modifier.padding(top = 10.dp),
                         small = true, icon = if (isDone(s)) Ic.check else null)
                 }
             }

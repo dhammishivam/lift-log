@@ -98,7 +98,7 @@ fun <T> Seg(items: List<Pair<T, String>>, sel: T, onSel: (T) -> Unit, modifier: 
         items.forEach { (k, l) ->
             Box(
                 (if (fill) Modifier.weight(1f) else Modifier).heightIn(min = 34.dp).clip(RoundedCornerShape(8.dp))
-                    .background(if (k == sel) p.bg else Color.Transparent).clickable { onSel(k) }.padding(horizontal = 10.dp),
+                    .background(if (k == sel) (if (p.dark) Color(0xFF41464F) else p.bg) else Color.Transparent).clickable { onSel(k) }.padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) { Txt(l, size = 13.sp, weight = FontWeight.SemiBold, color = if (k == sel) p.ink else p.mu, maxLines = 1) }
         }
