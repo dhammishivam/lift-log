@@ -58,3 +58,12 @@ jobs:
           cp composeApp/build/outputs/apk/debug/composeApp-debug.apk LiftLog-debug.apk
           gh release view latest >/dev/null 2>&1 || gh release create latest --prerelease --title "Latest build" --notes "Debug APK built automatically from main. Install on Android: download LiftLog-debug.apk and open it."
           gh release upload latest LiftLog-debug.apk --clobber
+      - name: Attach the signed bundle to a draft release (visible only to repo owners)
+        if: github.ref == 'refs/heads/main' && env.UPLOAD_KEYSTORE != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp composeApp/build/outputs/bundle/release/composeApp-release.aab LiftLog-release.aab
+          gh release view play-upload >/dev/null 2>&1 || gh release create play-upload --draft --title "Play upload" --notes "Signed release bundle for Play Console. Draft: not public."
+          gh release upload play-upload LiftLog-release.aab --clobber
+
