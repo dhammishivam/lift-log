@@ -30,7 +30,7 @@ import kotlin.math.roundToInt
 
 /**
  * Renders real app screens with demo data for the Play Store listing (1080 x 1920, dark theme).
- * Output: composeApp/build/store-screenshots/*.png
+ * Output: one PNG per screen in composeApp/build/store-screenshots
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
