@@ -77,12 +77,12 @@ class StoreScreenshots {
     private fun shot(name: String) {
         pump(600)
         // Draw the window directly: captureToImage() waits for an idle UI, and the app's clock never idles.
-        var bmp: Bitmap? = null
+        var drawn: Bitmap? = null
         rule.runOnUiThread {
             val v = rule.activity.window.decorView
-            bmp = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888).also { v.draw(android.graphics.Canvas(it)) }
+            drawn = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888).also { v.draw(android.graphics.Canvas(it)) }
         }
-        val bmp = bmp!!
+        val bmp = drawn!!
         FileOutputStream(File(out, "$name.png")).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         println("Saved ${out.path}/$name.png ${bmp.width}x${bmp.height}")
     }
