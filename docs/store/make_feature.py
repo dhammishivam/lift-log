@@ -19,6 +19,6 @@ title = ImageFont.truetype(F + "Inter-Bold.otf", 84 * SS)
 sub = ImageFont.truetype(F + "Inter-Medium.otf", 30 * SS)
 tx = 460
 d.text((tx * SS, 182 * SS), "Lift Log", font=title, fill=INK)
-d.text((tx * SS, 290 * SS), "Simple, private workout tracking", font=sub, fill=MUTED)
+d.text((tx * SS, 290 * SS), "Log every set. Beat every PR.", font=sub, fill=MUTED)
 im.resize((W, H), Image.LANCZOS).save("feature-1024x500.png")
 print("saved")

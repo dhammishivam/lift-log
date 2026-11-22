@@ -4,10 +4,10 @@
 Lift Log
 
 ## Short description (max 80)
-Log workouts, track progress and PRs. Private and offline, no account needed.
+Log every set, track your progress and beat your personal records.
 
 ## Full description (max 4000)
-Lift Log is a simple, fast workout tracker for the gym. Log every set, see your progress and beat your personal records, without an account, ads or anything social.
+Lift Log is a simple, fast workout tracker for the gym. Log every set, see your progress and beat your personal records.
 
 LOG WORKOUTS QUICKLY
 • Start an empty workout or one of your routines
@@ -38,5 +38,5 @@ TOOLS
 SWITCHING FROM HEVY?
 Import your Hevy workout and measurement exports (CSV) and keep your whole history, PRs and charts. A step-by-step guide in Settings walks you through it.
 
-PRIVATE BY DESIGN
-Everything stays on your phone. No account, no tracking, no ads. Export a full backup or CSV whenever you like.
+NO ACCOUNT NEEDED
+Start logging straight away, even offline. Export a full backup or CSV whenever you like.
