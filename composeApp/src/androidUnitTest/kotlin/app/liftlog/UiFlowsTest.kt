@@ -43,6 +43,11 @@ class UiFlowsTest {
 
     /* ---------- harness ---------- */
 
+    /** A stuck test fails with a stack trace instead of hanging the build. (JUnit's Timeout rule
+     *  moves the test off the main thread, which Robolectric refuses, so the limit is checked in pump.) */
+    private var deadline = System.currentTimeMillis() + 210_000
+    private var launchMs = -1L
+
     private fun launch(seed: Seed = Seed()): FakePlatform {
         val p = FakePlatform(seed.rows)
         val t0 = System.currentTimeMillis()
