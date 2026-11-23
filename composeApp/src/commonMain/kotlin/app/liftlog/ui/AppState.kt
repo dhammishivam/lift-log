@@ -243,10 +243,14 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
     /** What the last import brought in, for the summary card. */
     var lastImport by mutableStateOf<ImportSummary?>(null)
 
+    /** True while an import runs, for the full-screen loading overlay. */
+    var importing by mutableStateOf(false)
+
     suspend fun importTexts(files: List<Pair<String, String>>) {
         if (files.isEmpty()) return
         val out = mutableListOf<String>(); var sum = ImportSummary()
-        importStatus = "Importing…"
+        importStatus = "Importing…"; importing = true
+        kotlinx.coroutines.yield() // let the overlay draw before the parsing starts
         try {
             files.forEach { (name, text) ->
                 val head = text.lineSequence().firstOrNull()?.lowercase() ?: ""
@@ -257,7 +261,8 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
                     }
                     head.contains("exercise_title") -> {
                         importStatus = "Importing workouts…"
-                        val r = parseHevyWorkouts(text, idx)
+                        val ix = idx
+                        val r = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { parseHevyWorkouts(text, ix) } // keep the spinner moving
                         if (r.workouts.isEmpty() && r.skipped == 0) { out += "$name: no workouts found"; return@forEach }
                         sum = sum.copy(skipped = sum.skipped + r.skipped)
                         if (r.workouts.isEmpty()) { out += "no new workouts (${r.skipped} already in Lift Log)"; return@forEach }
@@ -268,7 +273,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
                             (if (nr > 0) ", " + count(nr, "routine") else "") + (if (r.skipped > 0) " (${r.skipped} already in Lift Log)" else "")
                     }
                     head.contains("weight_kg") || head.contains("waist_in") -> {
-                        val all = parseHevyMeasures(text); val ms = newMeasures(all, idx); store.importAll(emptyList(), emptyList(), ms, emptyList())
+                        val all = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { parseHevyMeasures(text) }; val ms = newMeasures(all, idx); store.importAll(emptyList(), emptyList(), ms, emptyList())
                         sum = sum.copy(measures = sum.measures + ms.size, skipped = sum.skipped + (all.size - ms.size))
                         out += count(ms.size, "new measurement entry", "new measurement entries") + (if (all.size > ms.size) " (${all.size - ms.size} already in Lift Log)" else "")
                     }
@@ -278,7 +283,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
             importStatus = "Done: ${out.joinToString("; ")}."
             lastImport = sum
             say("Import finished")
-        } catch (e: Throwable) { importStatus = e.message ?: "Import failed." }
+        } catch (e: Throwable) { importStatus = e.message ?: "Import failed." } finally { importing = false }
     }
 
     fun export(kind: String) = scope.launch {

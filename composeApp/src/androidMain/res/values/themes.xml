@@ -2,4 +2,7 @@
     <style name="Theme.LiftLog" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
     </style>
+    <style name="Theme.LiftLog.Invisible" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

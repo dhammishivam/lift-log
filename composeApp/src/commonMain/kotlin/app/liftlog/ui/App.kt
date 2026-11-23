@@ -42,7 +42,7 @@ fun App(platform: Platform) {
             launch { snapshotFlow { st.liveInfo() }.distinctUntilChanged().collect { platform.liveWorkout(it) } }
             launch { snapshotFlow { widgetInfo(st.idx, nowMs()) }.distinctUntilChanged().collect { platform.updateWidget(it) } }
             // Files shared into the app, e.g. Hevy's export opened with Lift Log.
-            launch { app.liftlog.data.Incoming.files.collect { if (it.isNotEmpty()) st.importIncoming(app.liftlog.data.Incoming.take()) } }
+            launch { app.liftlog.data.Incoming.files.collect { if (it.isNotEmpty()) { st.importIncoming(app.liftlog.data.Incoming.take()); app.liftlog.data.Incoming.busy.value = false } } }
         }
         val focus = LocalFocusManager.current
         // Close the keyboard whenever the visible screen changes.
@@ -78,6 +78,7 @@ fun App(platform: Platform) {
                 }
                 MenuOverlay(st)
                 CelebrationOverlay(st)
+                ImportOverlay(st)
                 ToastOverlay(st)
             }
         }
@@ -171,6 +172,22 @@ private fun ToastOverlay(st: AppState) {
         Row(Modifier.clip(RoundedCornerShape(12.dp)).background(p.ink).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Txt(t.text, Modifier.weight(1f, fill = false), size = 15.sp, color = p.bg)
             if (t.undo != null) Txt("Undo", Modifier.padding(start = 12.dp).clickable { st.toast = null; t.undo.invoke() }.padding(6.dp), size = 15.sp, weight = FontWeight.Bold, color = p.ac)
+        }
+    }
+}
+
+/** Covers the screen while files are read and imported, so a large Hevy export doesn't look like nothing happened. */
+@Composable
+private fun ImportOverlay(st: AppState) {
+    val reading by app.liftlog.data.Incoming.busy.collectAsState()
+    if (!st.importing && !reading) return
+    val p = LocalPal.current
+    Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = 0.94f)).noRippleTap {}, contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+            androidx.compose.material3.CircularProgressIndicator(color = p.ac)
+            Spacer(Modifier.height(18.dp))
+            Txt("Importing your data", size = 18.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+            Mu(if (st.importing) st.importStatus.ifBlank { "Importing…" } else "Reading the file…", Modifier.padding(top = 6.dp), size = 15.sp)
         }
     }
 }

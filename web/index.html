@@ -288,6 +288,8 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .goal span{font-size:14px;color:var(--mu)}
 .ringsv{width:64px;height:64px;flex:none}
 .bmap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;max-width:340px;margin:12px auto 4px}.bmap.sm{max-width:230px}
+#busy{position:fixed;inset:0;z-index:100;background:color-mix(in srgb,var(--bg) 94%,transparent);display:flex;align-items:center;justify-content:center}#busy div{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px;text-align:center}#busy b{font-size:18px}#busy small{color:var(--mu);font-size:15px}
+#busy .spin{width:40px;height:40px;border-radius:50%;border:4px solid var(--s2);border-top-color:var(--ac);animation:spin .8s linear infinite;margin-bottom:10px}@keyframes spin{to{transform:rotate(360deg)}}
 .prof{display:flex;align-items:center;gap:14px;margin:8px 0 4px}.pav{flex:none;width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}.pav svg{width:30px;height:30px}
 .pinfo{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}.pnm{font-size:22px;font-weight:600;text-align:left;padding:0;color:var(--ink)}.pnm.mu{color:var(--mu)}.pname{display:flex;gap:8px}.pname input{flex:1;min-width:0}
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.dash button{display:flex;align-items:center;gap:10px;padding:14px;border-radius:14px;background:var(--s1);text-align:left}.dash svg{color:var(--ac);width:20px;height:20px}.dash b{font-size:16px}
@@ -1508,14 +1510,17 @@ function parseHevy(text){const rows=parseCSV(text.replace(/^﻿/,''));if(rows.le
   const ws=[...W.values()].map(w=>{delete w._l;w.exercises=w.exercises.filter(i=>i.sets.length);return w}).filter(w=>w.exercises.length);
   const have=new Set(WS.map(w=>wKey(w.title,w.start))),fresh=ws.filter(w=>!S.docs[w.id]&&!have.has(wKey(w.title,w.start))),used=new Set(fresh.flatMap(w=>w.exercises.map(i=>i.eid)));
   return{xs:Object.values(newX).filter(x=>!S.docs[x.id]&&used.has(x.id)),ws:fresh,skipped:ws.length-fresh.length}}
-async function importHevy(files,sh){const say=m=>{sh.st.imp=m;const e=sh.el.querySelector('#impst');if(e)e.textContent=m};const out=[];
+// Full-screen loading while an import runs.
+function busyOverlay(on,msg){let o=document.getElementById('busy');if(!on){if(o)o.remove();return}
+  if(!o){o=document.createElement('div');o.id='busy';o.innerHTML='<div><i class="spin"></i><b>Importing your data</b><small></small></div>';document.body.appendChild(o)}o.querySelector('small').textContent=msg||'Importing…'}
+async function importHevy(files,sh){const say=m=>{sh.st.imp=m;busyOverlay(true,m);const e=sh.el.querySelector('#impst');if(e)e.textContent=m};const out=[];busyOverlay(true,'Reading the files…');
   try{for(const file of files){const text=await file.text(),head=(text.split(/\r?\n/,1)[0]||'').toLowerCase();
       if(head.includes('exercise_title')){const{xs,ws,skipped}=parseHevy(text);if(!ws.length){out.push(skipped?`no new workouts (${skipped} already in Lift Log)`:`${file.name}: no workouts found`);continue}
         say(`Importing ${ws.length} workouts…`);await bulk([...xs.map(x=>[x.id,x]),...ws.map(w=>[w.id,w])],(i,n)=>say(`Importing workouts… ${i} of ${n}`));
         say('Building routines…');const nr=await buildRoutines();out.push(`${cnt(ws.length,'new workout')}${xs.length?`, ${cnt(xs.length,'new exercise')}`:''}${nr?`, ${cnt(nr,'routine')}`:''}${skipped?` (${skipped} already in Lift Log)`:''}`)}
       else if(head.includes('weight_kg')||head.includes('waist_in')){const all=parseHevyMeasures(text),days=new Set(MS.map(m=>hevyDate(m.date).split(',')[0])),ms=all.filter(m=>!S.docs[m.id]&&!days.has(hevyDate(m.date).split(',')[0]));await bulk(ms.map(m=>[m.id,m]),(i,n)=>say(`Importing measurements… ${i} of ${n}`));out.push(`${cnt(ms.length,'new measurement entry','new measurement entries')}${all.length>ms.length?` (${all.length-ms.length} already in Lift Log)`:''}`)}
       else out.push(`${file.name}: not a Hevy export`)}
-    say(`Done: ${out.join('; ')}.`);toast('Hevy data imported')}catch(e){say(e.message||'Import failed.')}}
+    say(`Done: ${out.join('; ')}.`);toast('Hevy data imported')}catch(e){say(e.message||'Import failed.')}finally{busyOverlay(false)}}
 async function restoreJSON(sh){const t=(sh.el.querySelector('[data-f="rjson"]')||{}).value||'';let o;try{o=JSON.parse(t)}catch(e){return toast("That isn't valid backup JSON")}
   const docs=Object.entries(o.docs||{}).filter(([k,v])=>v&&['workout','routine','exercise','settings','measure','pins'].includes(v.kind));if(!docs.length)return toast('No data found in that backup');
   toast(`Restoring ${docs.length} items…`);await bulk(docs);sh.st.restore=false;paint(sh);toast('Backup restored')}
