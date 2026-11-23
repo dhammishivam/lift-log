@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.printToString
 import app.liftlog.logic.nowMs
 import app.liftlog.model.*
 import app.liftlog.ui.App
@@ -57,17 +58,20 @@ class UiFlowsTest {
         // pays for Robolectric's and Skia's cold start, so this waits on wall-clock time, not frames.
         while (!has("Exercises") && System.currentTimeMillis() - t0 < 120_000) { rule.mainClock.advanceTimeBy(50); Thread.sleep(50) }
         launchMs = System.currentTimeMillis() - t0
-        check(has("Exercises")) { "the app never finished loading ($launchMs ms)" }
+        check(has("Exercises")) { "the app never finished loading ($launchMs ms)\n${screen()}" }
         deadline = System.currentTimeMillis() + 90_000
         pump(300)
         return p
     }
-    private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { check(System.currentTimeMillis() < deadline) { "test took over 90 s after launch (launch took $launchMs ms)" }; rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
+    private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { check(System.currentTimeMillis() < deadline) { "test took over 90 s after launch (launch took $launchMs ms)\n${screen()}" }; rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
+    /** What is on screen, for failure messages. */
+    private fun screen() = runCatching { rule.onAllNodes(androidx.compose.ui.test.isRoot())[0].printToString(maxDepth = 30) }
+        .getOrElse { "(no tree: $it)" }.lines().filter { "Text = " in it || "ContentDescription" in it }.joinToString("\n").take(3000)
     private fun nodes(text: String, sub: Boolean = false) = rule.onAllNodesWithText(text, substring = sub, useUnmergedTree = true)
     private fun has(text: String, sub: Boolean = false) = nodes(text, sub).fetchSemanticsNodes().isNotEmpty()
     private fun see(text: String, sub: Boolean = false) {
         repeat(100) { if (has(text, sub)) return; pump(100) }
-        error("'$text' never appeared")
+        error("'$text' never appeared\n${screen()}")
     }
     private fun gone(text: String) { repeat(40) { if (!has(text)) return; pump(100) }; error("'$text' is still showing") }
     private fun click(n: SemanticsNodeInteraction) { runCatching { n.performScrollTo() }; n.performClick(); pump() }

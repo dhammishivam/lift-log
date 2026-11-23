@@ -117,7 +117,7 @@ sqldelight {
 tasks.withType<Test>().configureEach {
     systemProperty("liftlog.screenshots", (project.findProperty("screenshots") ?: "false").toString())
     testLogging {
-        events("failed")
+        events("started", "passed", "failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({ desc, result ->
