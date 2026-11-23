@@ -32,6 +32,13 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w411dp-h731dp-xxhdpi")
 class UiFlowsTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+    /** A stuck test fails with a stack trace instead of hanging the build. */
+    @get:Rule val timeout: org.junit.rules.Timeout = org.junit.rules.Timeout.seconds(90)
+    @get:Rule val timing = object : org.junit.rules.TestWatcher() {
+        var t0 = 0L
+        override fun starting(d: org.junit.runner.Description) { t0 = System.currentTimeMillis() }
+        override fun finished(d: org.junit.runner.Description) { println("UI ${d.methodName}: ${System.currentTimeMillis() - t0} ms") }
+    }
     private val now = nowMs()
     private val push = Routine(id = "r_push", name = "Push", created = 1, exercises = listOf(bench(listOf(WSet(kg = 60.0, reps = 8.0), WSet(kg = 60.0, reps = 8.0)))))
     private val lastPush = Workout(id = "w_old", title = "Push", start = now - 3 * DAY, end = now - 3 * DAY + 3_600_000, routineId = "r_push", exercises = listOf(bench(listOf(WSet(kg = 60.0, reps = 8.0)))))
@@ -42,14 +49,17 @@ class UiFlowsTest {
         val p = FakePlatform(seed.rows)
         rule.mainClock.autoAdvance = false // the app's clock ticks forever, so the UI never idles
         rule.setContent { App(p) }
-        pump(1500)
+        // Wait for the database to load: the tab bar appears with the data.
+        for (i in 0 until 300) { if (has("Exercises")) break; pump(100) }
+        check(has("Exercises")) { "the app never finished loading" }
+        pump(300)
         return p
     }
     private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
     private fun nodes(text: String, sub: Boolean = false) = rule.onAllNodesWithText(text, substring = sub, useUnmergedTree = true)
     private fun has(text: String, sub: Boolean = false) = nodes(text, sub).fetchSemanticsNodes().isNotEmpty()
     private fun see(text: String, sub: Boolean = false) {
-        repeat(60) { if (has(text, sub)) return; pump(100) }
+        repeat(100) { if (has(text, sub)) return; pump(100) }
         error("'$text' never appeared")
     }
     private fun gone(text: String) { repeat(40) { if (!has(text)) return; pump(100) }; error("'$text' is still showing") }

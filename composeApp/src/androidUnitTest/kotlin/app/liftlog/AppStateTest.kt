@@ -240,7 +240,8 @@ class AppStateTest {
         val (st, p) = loadedState()
         p.filesToPick = listOf("backup.json" to json)
         st.importFiles()
-        waitUntil("restore") { st.importStatus.startsWith("Done") }
+        waitUntil("restore") { st.importStatus.isNotEmpty() && !st.importStatus.startsWith("Importing") }
+        assertTrue(st.importStatus, st.importStatus.startsWith("Done") && st.importStatus.contains("items from backup"))
         assertEquals(1, st.data.workouts.size); assertEquals(1, st.data.routines.size); assertEquals(1, st.data.measures.size)
         assertEquals("lb", st.data.settings.unit); assertEquals(3, st.data.settings.goal)
     }

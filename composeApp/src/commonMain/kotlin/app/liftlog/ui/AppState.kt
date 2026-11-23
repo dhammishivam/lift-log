@@ -232,6 +232,10 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
             files.forEach { (name, text) ->
                 val head = text.lineSequence().firstOrNull()?.lowercase() ?: ""
                 when {
+                    // A Lift Log backup is one line of JSON that can mention "weight_kg", so check for it first.
+                    text.trimStart().startsWith("{") -> {
+                        val docs = parseBackup(text); store.importDocs(docs); out += "${docs.size} items from backup"
+                    }
                     head.contains("exercise_title") -> {
                         importStatus = "Importing workouts…"
                         val r = parseHevyWorkouts(text, idx)
@@ -245,9 +249,6 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
                     head.contains("weight_kg") || head.contains("waist_in") -> {
                         val all = parseHevyMeasures(text); val ms = newMeasures(all, idx); store.importAll(emptyList(), emptyList(), ms, emptyList())
                         out += count(ms.size, "new measurement entry", "new measurement entries") + (if (all.size > ms.size) " (${all.size - ms.size} already in Lift Log)" else "")
-                    }
-                    text.trimStart().startsWith("{") -> {
-                        val docs = parseBackup(text); store.importDocs(docs); out += "${docs.size} items from backup"
                     }
                     else -> out += "$name: not a Hevy export or Lift Log backup"
                 }
