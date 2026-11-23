@@ -162,11 +162,11 @@ class UiFlowsTest {
 
     @Test fun notificationButtonsReachTheApp() {
         val p = launch(Seed().routine(push))
-        rule.runOnUiThread { p.actionHandler!!("start:r_push") }; pump()
+        rule.runOnUiThread { p.handler!!("start:r_push") }; pump()
         see("Log workout")
-        rule.runOnUiThread { p.actionHandler!!("done") }; pump(800)
+        rule.runOnUiThread { p.handler!!("done") }; pump(800)
         assertEquals(1, p.live.last()!!.done)
-        rule.runOnUiThread { p.actionHandler!!("skip") }; pump(800)
+        rule.runOnUiThread { p.handler!!("skip") }; pump(800)
         assertNull(p.live.last()!!.restEnd)
     }
 

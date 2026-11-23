@@ -32,7 +32,7 @@ class FakePlatform(private val seed: List<Triple<String, String, String>> = empt
     val widgets = mutableListOf<WidgetInfo>()
     val shared = mutableListOf<ShareCard>()
     var shareResult = true
-    var actionHandler: ((String) -> Unit)? = null
+    var handler: ((String) -> Unit)? = null
 
     override fun openUrl(url: String) { opened += url }
     override fun sqlDriver(): SqlDriver {
@@ -50,7 +50,7 @@ class FakePlatform(private val seed: List<Triple<String, String, String>> = empt
     override fun setRestEnd(atMillis: Long?) { restEnds += atMillis }
     override fun celebrate() { buzzes++ }
     override fun liveWorkout(info: LiveInfo?) { live += info }
-    override fun setActionHandler(handler: (String) -> Unit) { actionHandler = handler }
+    override fun setActionHandler(handler: (String) -> Unit) { this.handler = handler }
     override fun updateWidget(info: WidgetInfo) { widgets += info }
     override fun shareCard(card: ShareCard): Boolean { shared += card; return shareResult }
     override fun mascot(kind: String): ImageBitmap? = null
