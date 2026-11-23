@@ -35,7 +35,7 @@ class UiFlowsTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
     @get:Rule val timing = object : org.junit.rules.TestWatcher() {
         var t0 = 0L
-        override fun starting(d: org.junit.runner.Description) { t0 = System.currentTimeMillis() }
+        override fun starting(d: org.junit.runner.Description) { t0 = System.currentTimeMillis(); testName = d.methodName }
         override fun finished(d: org.junit.runner.Description) { println("UI ${d.methodName}: ${System.currentTimeMillis() - t0} ms") }
     }
     private val now = nowMs()
@@ -49,7 +49,30 @@ class UiFlowsTest {
     private var deadline = System.currentTimeMillis() + 210_000
     private var launchMs = -1L
 
+    /** If a frame never finishes, a timeout can't fire on the blocked main thread. This watchdog writes every
+     *  thread's stack to build/ui-hang.txt (CI prints it) so the stuck call can be seen, then ends the run. */
+    private fun watchdog(name: String) {
+        val main = Thread.currentThread()
+        Thread {
+            try { Thread.sleep(150_000) } catch (_: InterruptedException) { return@Thread }
+            val dump = buildString {
+                appendLine("UI test '$name' stuck; main thread:")
+                main.stackTrace.forEach { appendLine("    at $it") }
+                Thread.getAllStackTraces().filterKeys { it != main && it.isAlive }.forEach { (t, st) ->
+                    if (st.any { e -> "compose" in e.className || "liftlog" in e.className }) { appendLine("-- ${t.name}"); st.take(25).forEach { appendLine("    at $it") } }
+                }
+            }
+            java.io.File("build/ui-hang.txt").apply { parentFile.mkdirs() }.appendText(dump)
+            System.err.println(dump)
+            Runtime.getRuntime().halt(3)
+        }.apply { isDaemon = true; start() }.also { wd = it }
+    }
+    private var wd: Thread? = null
+    private var testName = "?"
+    @org.junit.After fun stopWatchdog() { wd?.interrupt() }
+
     private fun launch(seed: Seed = Seed()): FakePlatform {
+        watchdog(testName)
         val p = FakePlatform(seed.rows)
         val t0 = System.currentTimeMillis()
         rule.mainClock.autoAdvance = false // the app's clock ticks forever, so the UI never idles
