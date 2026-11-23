@@ -17,6 +17,29 @@ class ExtrasTest {
         assertEquals(mapOf("Chest" to 1, "Quads" to 1), muscleSets(idx, listOf(bench, squat), doneOnly = true))
     }
 
+    @Test fun setsCreditTargetAndHelperMuscles() {
+        fun x(name: String, muscle: String) = Exercise("x", name, muscle, "Barbell", "wr")
+        assertEquals(mapOf("Chest" to 1.0, "Triceps" to 0.5, "Front delts" to 0.5), muscleTargets(x("Bench Press (Barbell)", "Chest")))
+        assertEquals(mapOf("Lats" to 1.0, "Biceps" to 0.5, "Upper back" to 0.5), muscleTargets(x("Lat Pulldown (Cable)", "Back")))
+        assertEquals(1.0, muscleTargets(x("Bent Over Row (Barbell)", "Back"))["Upper back"])
+        assertEquals(1.0, muscleTargets(x("Deadlift (Barbell)", "Back"))["Lower back"])
+        assertEquals(mapOf("Side delts" to 1.0), muscleTargets(x("Lateral Raise (Dumbbell)", "Shoulders")))
+        assertEquals(1.0, muscleTargets(x("Face Pull", "Shoulders"))["Rear delts"])
+        assertEquals(1.0, muscleTargets(x("Russian Twist (Bodyweight)", "Abs"))["Obliques"])
+        assertEquals(1.0, muscleTargets(x("Hip Abduction (Machine)", "Glutes"))["Abductors"])
+        assertEquals(emptyMap(), muscleTargets(x("Running", "Cardio")))
+        // every region the rules can credit is drawn on the map
+        listOf("Chest", "Back", "Traps", "Shoulders", "Biceps", "Triceps", "Forearms", "Quads", "Hamstrings", "Glutes", "Calves", "Adductors", "Abs", "Full body")
+            .flatMap { m -> listOf("Press", "Row", "Pulldown", "Deadlift", "Curl", "Raise", "Twist", "Swing", "Squat").flatMap { muscleTargets(x(it, m)).keys } }
+            .forEach { assertTrue(it in REGIONS, "$it is not a map region") }
+    }
+
+    @Test fun shadesFollowWeeklySets() {
+        assertEquals(listOf(0, 1, 2, 3, 3, 4), listOf(0.0, 2.0, 6.0, 10.0, 20.0, 25.0).map { weeklyLevel(it) })
+        assertEquals(listOf(3, 2, 1, 0), listOf(5.0, 30.0, 60.0, 100.0).map { recoveryLevel(it) })
+        assertEquals(0, recoveryLevel(null))
+    }
+
     @Test fun setsNeedTheirRequiredFields() {
         assertEquals("Add the weight first", setProblem("wr", WSet(reps = 8.0)))
         assertEquals("Add the weight first", setProblem("wr", WSet(kg = 0.0, reps = 8.0)))

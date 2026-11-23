@@ -229,54 +229,100 @@ internal fun CalendarView(st: AppState) {
 @Composable
 internal fun MusclesView(st: AppState) {
     val idx = st.idx; val p = LocalPal.current
+    val exOf: (String) -> app.liftlog.model.Exercise = { idx.exOf(it) }
     val days = st.mu; val now = st.now; val from = now - days * 86_400_000L; val pf = from - days * 86_400_000L
-    val cnt = HashMap<String, Int>(); val pc = HashMap<String, Int>()
-    idx.ws.forEach { w ->
-        val tg = if (w.start >= from) cnt else if (w.start >= pf) pc else null
-        tg?.let { m -> w.exercises.forEach { it2 -> val mu = idx.exOf(it2.eid).muscle; val n = working(it2.sets).size; if (n > 0) m[mu] = (m[mu] ?: 0) + n } }
-    }
-    fun groups(m: Map<String, Int>) = HashMap<String, Int>().also { g -> m.forEach { (k, v) -> GROUP[k]?.let { gr -> g[gr] = (g[gr] ?: 0) + v } } }
-    val rows = cnt.entries.sortedByDescending { it.value }; val mx = maxOf(1, rows.maxOfOrNull { it.value } ?: 0); val tot = rows.sumOf { it.value }
-    val ptot = pc.values.sum(); val wk = days / 7.0
+    val cur = idx.ws.filter { it.start >= from }; val prev = idx.ws.filter { it.start in pf until from }
+    val cnt = regionSets(cur, exOf); val pc = regionSets(prev, exOf)
+    val wk = days / 7.0; val tot = cnt.values.sum(); val ptot = pc.values.sum()
+    var mode by remember { mutableStateOf("vol") }
     var sel by remember { mutableStateOf<String?>(null) }
-    ChipRow { listOf(7 to "7 days", 30 to "30 days", 90 to "3 months", 365 to "1 year").forEach { (k, l) -> Chip(l, st.mu == k) { st.mu = k } } }
-    Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.Bottom) {
-        Big("$tot sets")
-        Spacer(Modifier.width(10.dp))
-        if (ptot > 0 || tot > 0) {
-            val d = tot - ptot
-            Txt((if (d >= 0) "+" else "−") + kotlin.math.abs(d) + " vs previous ${if (days == 365) "year" else "$days days"}", Modifier.padding(bottom = 4.dp), size = 14.sp, color = if (d >= 0) p.ok else p.fa)
+    val last = remember(idx.ws.size) { lastTrained(idx.ws, exOf) }
+    Seg(listOf("vol" to "Volume", "rec" to "Recovery"), mode) { mode = it }
+    if (mode == "vol") {
+        Spacer(Modifier.height(10.dp)); ChipRow { listOf(7 to "7 days", 30 to "30 days", 90 to "3 months", 365 to "1 year").forEach { (k, l) -> Chip(l, st.mu == k) { st.mu = k } } }
+        Big("${setsLabel(tot)} sets", Modifier.padding(top = 12.dp))
+        if (tot > 0 || ptot > 0) { val d = tot - ptot
+            Txt((if (d >= 0) "+" else "−") + setsLabel(kotlin.math.abs(d)) + " vs previous ${if (days == 365) "year" else "$days days"}", size = 14.sp, color = if (d >= 0) p.ok else p.fa) }
+        Mu(if (days > 7) "About ${setsLabel(tot / wk)} sets a week" else "This week", size = 14.sp)
+        if (cur.isEmpty()) { Mu("No workouts in this period.", Modifier.padding(top = 12.dp)); return }
+        val shades = volumeShades()
+        BodyMap(cnt.mapValues { weeklyLevel(it.value / maxOf(1.0, wk)) }, shades, sel = sel) { sel = it }
+        MapLegend(shades, listOf("None", "1–3 / wk", "4–9", "10–20", "20+"))
+        sel?.let { r -> MuscleDetail(st, r, cnt[r] ?: 0.0, pc[r] ?: 0.0, wk, last[r], regionExercises(cur, exOf, r)) { sel = null } }
+        val low = MAJOR.filter { (cnt[it] ?: 0.0) / maxOf(1.0, wk) < 10 }
+        if (days >= 7 && low.isNotEmpty()) Panel(Modifier.padding(top = 12.dp)) {
+            Txt("Under 10 sets a week", size = 15.sp, weight = FontWeight.SemiBold)
+            Mu("${low.joinToString(", ")}. Around 10–20 hard sets a week is the usual range for growth.", Modifier.padding(top = 4.dp), size = 14.sp)
         }
-    }
-    Mu("Working sets per muscle" + if (days > 7) " · about ${(tot / wk).let { r -> fmtN(if (r < 10) (r * 10).roundToInt() / 10.0 else r.roundToInt().toDouble()) }} a week" else "", size = 14.sp)
-    if (rows.isEmpty()) { Mu("No workouts in this period.", Modifier.padding(top = 12.dp)); return }
-    BodyMap(cnt, sel = sel)
-    Panel(Modifier.padding(top = 14.dp)) {
-        Txt("Balance", size = 16.sp, weight = FontWeight.SemiBold)
-        Mu("Sets per muscle group. Dashed: the previous ${if (days == 365) "year" else "$days days"}.", size = 13.sp)
-        BalanceRadar(groups(cnt), groups(pc), Modifier.padding(top = 4.dp))
-    }
-    Label("By muscle")
-    rows.forEach { (m, v) ->
-        val pv = pc[m] ?: 0; val dv = v - pv
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (sel == m) p.s1 else Color.Transparent)
-            .clickable { sel = if (sel == m) null else m }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp).clip(CircleShape).background(muscleColor(v, mx)))
-            Spacer(Modifier.width(8.dp))
-            Txt(m, Modifier.width(100.dp), size = 15.sp)
-            Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(p.s2)) {
-                Box(Modifier.fillMaxWidth(v.toFloat() / mx).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(muscleColor(v, mx)))
-            }
-            Column(Modifier.width(76.dp).padding(start = 10.dp), horizontalAlignment = Alignment.End) {
-                Txt(v.toString(), size = 17.sp, weight = FontWeight.SemiBold)
-                Txt(if (dv == 0) "same" else "${if (dv > 0) "+" else "−"}${kotlin.math.abs(dv)}", size = 12.sp, color = when { dv > 0 -> p.ok; dv < 0 -> p.fa; else -> p.mu })
+        Panel(Modifier.padding(top = 12.dp)) {
+            Txt("Balance", size = 16.sp, weight = FontWeight.SemiBold)
+            Mu("Sets per muscle group. Dashed: the previous ${if (days == 365) "year" else "$days days"}.", size = 13.sp)
+            BalanceRadar(groupSets(cnt).mapValues { it.value.roundToInt() }, groupSets(pc).mapValues { it.value.roundToInt() }, Modifier.padding(top = 4.dp))
+        }
+        Label("By muscle")
+        val rows = cnt.entries.sortedByDescending { it.value }; val mx = maxOf(1.0, rows.maxOfOrNull { it.value } ?: 0.0)
+        rows.forEach { (m, v) ->
+            val dv = v - (pc[m] ?: 0.0); val c = shades[weeklyLevel(v / maxOf(1.0, wk))]
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (sel == m) p.s1 else Color.Transparent)
+                .clickable { sel = if (sel == m) null else m }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).clip(CircleShape).background(c)); Spacer(Modifier.width(8.dp))
+                Txt(m, Modifier.width(104.dp), size = 15.sp)
+                Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(p.s2)) {
+                    Box(Modifier.fillMaxWidth((v / mx).toFloat()).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(c))
+                }
+                Column(Modifier.width(80.dp).padding(start = 10.dp), horizontalAlignment = Alignment.End) {
+                    Txt(setsLabel(v), size = 17.sp, weight = FontWeight.SemiBold)
+                    Txt(if (days > 7) "${setsLabel(v / wk)}/wk" else if (dv == 0.0) "same" else "${if (dv > 0) "+" else "−"}${setsLabel(kotlin.math.abs(dv))}", size = 12.sp,
+                        color = if (days > 7) p.mu else if (dv > 0) p.ok else if (dv < 0) p.fa else p.mu)
+                }
             }
         }
+        Mu("Sets are credited to every muscle an exercise works: 1 for the target, ½ for helpers (bench press: chest 1, triceps and front delts ½). Warm-ups are left out. Tap a muscle on the map or in the list.", Modifier.padding(top = 8.dp), size = 13.sp)
+    } else {
+        val shades = recoveryShades()
+        val lv = REGIONS.associateWith { r -> recoveryLevel(last[r]?.let { (now - it) / 3_600_000.0 }) }
+        Mu("Muscles that got 2+ sets recently. Most recover in 48–72 hours.", Modifier.padding(top = 10.dp), size = 14.sp)
+        BodyMap(lv, shades, sel = sel) { sel = it }
+        MapLegend(shades, listOf("Fresh", "48–72 h", "24–48 h", "Under 24 h"))
+        val ready = MAJOR.filter { (lv[it] ?: 0) == 0 }; val sore = REGIONS.filter { (lv[it] ?: 0) >= 1 }
+        Panel(Modifier.padding(top = 12.dp)) {
+            Txt("Ready to train", size = 15.sp, weight = FontWeight.SemiBold)
+            Mu(if (ready.isEmpty()) "Everything was trained in the last 3 days." else ready.joinToString(", "), Modifier.padding(top = 4.dp), size = 14.sp)
+            if (sore.isNotEmpty()) { Txt("Still recovering", Modifier.padding(top = 10.dp), size = 15.sp, weight = FontWeight.SemiBold); Mu(sore.joinToString(", "), Modifier.padding(top = 4.dp), size = 14.sp) }
+        }
+        sel?.let { r -> Panel(Modifier.padding(top = 12.dp)) {
+            Txt(r, size = 16.sp, weight = FontWeight.SemiBold)
+            Mu(last[r]?.let { "Last trained ${ago(now - it)}" } ?: "Not trained recently", Modifier.padding(top = 4.dp), size = 14.sp)
+        } }
     }
-    val miss = listOf("Chest", "Back", "Shoulders", "Biceps", "Triceps", "Quads", "Hamstrings", "Glutes", "Calves", "Abs").filter { it !in cnt }
-    if (miss.isNotEmpty()) Mu("Not trained in this period: ${miss.joinToString(", ")}.", Modifier.padding(top = 12.dp))
-    Mu("Each set counts toward the exercise's main muscle. Warm-ups are left out. Tap a muscle to find it on the map.", Modifier.padding(top = 8.dp), size = 13.sp)
 }
+
+/** What one muscle got in the period, from a tap on the map or the list. */
+@Composable
+private fun MuscleDetail(st: AppState, r: String, v: Double, pv: Double, wk: Double, last: Long?, exs: List<Pair<String, Double>>, close: () -> Unit) {
+    val p = LocalPal.current
+    Panel(Modifier.padding(top = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Txt(r, Modifier.weight(1f), size = 18.sp, weight = FontWeight.SemiBold)
+            IconBtn(Ic.x, "Close", close, size = 32.dp)
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            Stat("Sets", setsLabel(v), Modifier.weight(1f)); Stat("Per week", setsLabel(v / maxOf(1.0, wk)), Modifier.weight(1f))
+            Stat("Change", (if (v >= pv) "+" else "−") + setsLabel(kotlin.math.abs(v - pv)), Modifier.weight(1f))
+        }
+        Mu(last?.let { "Last trained ${ago(st.now - it)}" } ?: "Not trained recently", Modifier.padding(top = 8.dp), size = 14.sp)
+        if (exs.isNotEmpty()) {
+            Txt("From", Modifier.padding(top = 10.dp), size = 14.sp, weight = FontWeight.SemiBold)
+            exs.take(5).forEach { (e, n) ->
+                Row(Modifier.fillMaxWidth().clickable { st.push(Screen.ExerciseDetail(e)) }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Txt(st.idx.exOf(e).name, Modifier.weight(1f), size = 15.sp, maxLines = 1); Txt(setsLabel(n), size = 15.sp, color = p.mu)
+                }
+            }
+        }
+    }
+}
+
+private fun ago(ms: Long): String { val h = ms / 3_600_000; return when { h < 1 -> "just now"; h < 24 -> "${h} h ago"; h < 48 -> "yesterday"; else -> "${h / 24} days ago" } }
 
 /** A rounded panel for a section of the Muscles screen. */
 @Composable

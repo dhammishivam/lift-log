@@ -42,7 +42,7 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
             val recs = workoutRecords(idx, w, lb)
             if (recs.isNotEmpty()) RecordList(recs)
             Btn("Share", { st.shareWorkout(w, p.dark) }, Modifier.padding(top = 10.dp), small = true, icon = Ic.share)
-            MusclesWorked(muscleSets(idx, w.exercises))
+            MusclesWorked(regionSetsOf(w.exercises, { idx.exOf(it) }))
             if (!w.notes.isNullOrBlank()) Txt(w.notes, Modifier.padding(top = 10.dp), size = 15.sp)
             w.exercises.forEachIndexed { ei, it2 ->
                 val x = idx.exOf(it2.eid); val q = ss(it2.ss)

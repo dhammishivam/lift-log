@@ -1,6 +1,10 @@
 package app.liftlog.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -86,32 +90,48 @@ private val SIL_P by lazy { listOf(androidx.compose.ui.graphics.Path().apply { B
 private val FRONT_P by lazy { BodyPaths.front.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
 private val BACK_P by lazy { BodyPaths.back.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
 
-/** Heat colour for a muscle: untrained muscles stay quiet, trained ones go from a pale to the full accent. */
+/** Shades for levels 0–4 of the volume map: untrained, then light to strong; 4 is above the productive range. */
 @Composable
-fun muscleColor(v: Int, mx: Int): Color {
+fun volumeShades(): List<Color> {
     val p = LocalPal.current
-    return if (v <= 0) lerp(p.s2, p.ink, 0.14f) else lerp(lerp(p.s2, p.ac, 0.35f), p.ac, (v.toFloat() / maxOf(1, mx)).coerceIn(0f, 1f))
+    return listOf(lerp(p.s2, p.ink, 0.12f), lerp(p.s2, p.ac, 0.38f), lerp(p.s2, p.ac, 0.7f), p.ac, lerp(p.ac, Color.White, 0.38f))
 }
 
-/** Front and back anatomy with each muscle shaded by how many sets it got. [sel] outlines one muscle. */
+/** Shades for the recovery map: fresh, then 48–72 h, 24–48 h and under 24 h since trained. */
 @Composable
-fun BodyMap(cnt: Map<String, Int>, maxWidth: androidx.compose.ui.unit.Dp = 340.dp, legend: Boolean = true, sel: String? = null) {
+fun recoveryShades(): List<Color> {
     val p = LocalPal.current
-    val mx = maxOf(1, cnt.values.maxOrNull() ?: 0)
-    val cols = (BodyPaths.front.keys + BodyPaths.back.keys).associateWith { m -> muscleColor(cnt[m] ?: 0, mx) }
+    return listOf(lerp(p.s2, p.ink, 0.12f), Color(0xFFE9C46A), Color(0xFFF08C3A), Color(0xFFE5484D), Color(0xFFE5484D))
+}
+
+/**
+ * Front and back anatomy. Each region is drawn in shades[levels[region]]; [sel] is outlined and [onTap] reports
+ * which region was tapped (null for none), so the map works as a picker.
+ */
+@Composable
+fun BodyMap(levels: Map<String, Int>, shades: List<Color>, maxWidth: androidx.compose.ui.unit.Dp = 380.dp, sel: String? = null, onTap: ((String?) -> Unit)? = null) {
+    val p = LocalPal.current
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Row(Modifier.widthIn(max = maxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf("Front" to FRONT_P, "Back" to BACK_P).forEach { (label, parts) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Canvas(Modifier.fillMaxWidth().aspectRatio(200f / 420f)) {
-                        val k = size.width / 200f
+                    var w by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(1f) }
+                    val tap = if (onTap == null) Modifier else Modifier.pointerInput(parts) {
+                        detectTapGestures { o -> onTap(regionAt(parts, o.x * 200f / w, o.y * 200f / w)) }
+                    }
+                    Canvas(Modifier.fillMaxWidth().aspectRatio(200f / 430f).then(tap)) {
+                        w = size.width; val k = size.width / 200f
                         scale(k, k, pivot = Offset.Zero) {
                             SIL_P.forEach { drawPath(it, p.s2) }
                             parts.forEach { (m, paths) ->
+                                val c = shades[(levels[m] ?: 0).coerceIn(0, shades.lastIndex)]
                                 paths.forEach { path ->
-                                    drawPath(path, cols.getValue(m))
-                                    drawPath(path, if (m == sel) p.ink else p.bg, style = androidx.compose.ui.graphics.drawscope.Stroke(width = if (m == sel) 2.2f else 0.9f))
+                                    drawPath(path, c)
+                                    drawPath(path, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.Transparent)))
                                 }
+                            }
+                            parts.forEach { (m, paths) ->
+                                paths.forEach { path -> drawPath(path, if (m == sel) p.ink else p.bg, style = Stroke(width = if (m == sel) 2.4f else 0.9f)) }
                             }
                         }
                     }
@@ -119,10 +139,24 @@ fun BodyMap(cnt: Map<String, Int>, maxWidth: androidx.compose.ui.unit.Dp = 340.d
                 }
             }
         }
-        if (legend) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Mu("Fewer sets", size = 13.sp); Spacer(Modifier.width(8.dp))
-            Canvas(Modifier.width(90.dp).height(8.dp)) { drawRoundRect(Brush.horizontalGradient(listOf(lerp(p.s2, p.ac, 0.35f), p.ac)), cornerRadius = CornerRadius(4.dp.toPx())) }
-            Spacer(Modifier.width(8.dp)); Mu("More", size = 13.sp)
+    }
+}
+
+/** Which region of [parts] contains the point (in the 200 × 430 drawing box), if any. */
+private fun regionAt(parts: Map<String, List<Path>>, x: Float, y: Float): String? {
+    val dot = Path().apply { addOval(androidx.compose.ui.geometry.Rect(x - 1.5f, y - 1.5f, x + 1.5f, y + 1.5f)) }
+    return parts.entries.lastOrNull { (_, ps) -> ps.any { pth -> !Path().apply { op(pth, dot, androidx.compose.ui.graphics.PathOperation.Intersect) }.isEmpty } }?.key
+}
+
+/** A key for a shaded map: a swatch per level with its label. */
+@Composable
+fun MapLegend(shades: List<Color>, labels: List<String>) {
+    FlowRowX(Modifier.padding(top = 8.dp)) {
+        labels.forEachIndexed { i, l ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).background(shades[i], androidx.compose.foundation.shape.RoundedCornerShape(3.dp)))
+                Spacer(Modifier.width(5.dp)); Mu(l, size = 12.sp)
+            }
         }
     }
 }
@@ -151,24 +185,24 @@ fun BalanceRadar(cur: Map<String, Int>, prev: Map<String, Int>, modifier: Modifi
     }
 }
 
-/** "Muscles worked" for one workout: a small body map and the sets per muscle. */
+/** "Muscles worked" for one workout: the body map and credited sets per muscle (helpers count half). */
 @Composable
-fun MusclesWorked(cnt: Map<String, Int>) {
+fun MusclesWorked(cnt: Map<String, Double>) {
     if (cnt.isEmpty()) return
-    val p = LocalPal.current
+    val p = LocalPal.current; val shades = volumeShades()
     Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
         Txt("Muscles worked", size = 17.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-        BodyMap(cnt, maxWidth = 230.dp, legend = false)
-        val mx = maxOf(1, cnt.values.maxOrNull() ?: 0)
+        BodyMap(cnt.mapValues { app.liftlog.logic.sessionLevel(it.value) }, shades, maxWidth = 240.dp)
+        val mx = maxOf(1.0, cnt.values.maxOrNull() ?: 0.0)
         cnt.forEach { (m, n) ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Txt(m, Modifier.width(100.dp), size = 15.sp)
                 Box(Modifier.weight(1f).height(10.dp).background(p.s2, androidx.compose.foundation.shape.RoundedCornerShape(5.dp))) {
-                    Box(Modifier.fillMaxWidth(n.toFloat() / mx).fillMaxHeight().background(p.ac, androidx.compose.foundation.shape.RoundedCornerShape(5.dp)))
+                    Box(Modifier.fillMaxWidth((n / mx).toFloat()).fillMaxHeight().background(shades[app.liftlog.logic.sessionLevel(n)], androidx.compose.foundation.shape.RoundedCornerShape(5.dp)))
                 }
-                Txt("$n", Modifier.width(36.dp), size = 15.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.End)
+                Txt(app.liftlog.logic.setsLabel(n), Modifier.width(40.dp), size = 15.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.End)
             }
         }
-        Mu("Working sets per main muscle.", Modifier.padding(top = 6.dp), size = 13.sp)
+        Mu("Sets per muscle; muscles that help count half a set.", Modifier.padding(top = 6.dp), size = 13.sp)
     }
 }

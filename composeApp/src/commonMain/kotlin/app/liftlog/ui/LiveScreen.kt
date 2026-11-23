@@ -341,7 +341,7 @@ fun FinishScreen(st: AppState, f: Screen.Finish) {
             }
             val recs = liveRecords(idx, a, lb)
             if (recs.isNotEmpty()) RecordList(recs)
-            MusclesWorked(muscleSets(idx, a.exercises, doneOnly = true))
+            MusclesWorked(regionSetsOf(a.exercises, { idx.exOf(it) }, doneOnly = true))
             if (inc > 0) Txt("$inc incomplete set${if (inc > 1) "s" else ""} will be left out.", size = 14.sp, color = p.wu)
             Btn("Save workout", { st.saveWorkout(f) }, Modifier.fillMaxWidth().padding(top = 16.dp), kind = BtnKind.Primary)
         }

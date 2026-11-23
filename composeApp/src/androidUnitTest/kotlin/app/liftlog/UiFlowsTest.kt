@@ -254,7 +254,7 @@ class UiFlowsTest {
         launch(Seed().workout(lastPush))
         tap("Profile"); see("Add your name"); see("Records"); see("Push")
         tap("Add your name"); type(0, "Shivam"); tap("Save"); see("Shivam")
-        tap("Muscles"); see("Balance"); see("By muscle"); back()
+        tap("Muscles"); see("Balance"); see("By muscle"); tap("Recovery"); see("Ready to train"); back()
         tap("Push"); see("Muscles worked"); see("Chest")
     }
 

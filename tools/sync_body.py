@@ -18,6 +18,6 @@ internal object BodyPaths {{
 (root / "composeApp/src/commonMain/kotlin/app/liftlog/ui/BodyPaths.kt").write_text(kt)
 web = root / "web/index.html"; s = web.read_text()
 line = "const BODY=" + json.dumps(b, separators=(",", ":")) + ";"
-s = re.sub(r"const BODY=\{.*?\};", lambda m: line, s, count=1, flags=re.S) if "const BODY={" in s else s.replace("function bodyMap(cnt,small){", line + "\nfunction bodyMap(cnt,small){", 1)
+s = re.sub(r"const BODY=\{.*?\};", lambda m: line, s, count=1, flags=re.S) if "const BODY={" in s else s.replace("// Anatomical body map:", line + "\n// Anatomical body map:", 1)
 web.write_text(s)
 print("body shapes:", sum(len(v) for v in b["front"].values()), "front,", sum(len(v) for v in b["back"].values()), "back")
