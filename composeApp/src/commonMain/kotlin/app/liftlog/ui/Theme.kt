@@ -81,5 +81,6 @@ object Ic {
     val play = icon("play", "M8 5l11 7-11 7z")
     val stop = icon("stop", "M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z")
     val chat = icon("chat", "M4 5h16v11H9l-5 4z")
+    val share = icon("share", circle(18f, 5f, 2.5f), circle(6f, 12f, 2.5f), circle(18f, 19f, 2.5f), "M8.2 10.9l7.6-4.6M8.2 13.1l7.6 4.6")
     val warn = icon("warn", "M12 4l9 16H3zM12 10v4M12 17.5v.5")
 }

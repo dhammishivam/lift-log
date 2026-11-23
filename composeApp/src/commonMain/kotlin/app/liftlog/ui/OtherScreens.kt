@@ -48,8 +48,6 @@ fun PhotoThumb(st: AppState, id: String, modifier: Modifier, crop: Boolean = tru
     }
 }
 
-private fun mUnit(k: String, lb: Boolean) = if (k == "weight_kg") unitOf(lb) else MF.firstOrNull { it.first == k }?.third ?: ""
-private fun mFmt(k: String, v: Double, lb: Boolean) = if (k == "weight_kg") wt(v, lb) else if (mUnit(k, lb) == "%") "${fmtN(v)}%" else "${fmtN(v)} ${mUnit(k, lb)}"
 
 /* ---------- body tab ---------- */
 @Composable
@@ -66,10 +64,10 @@ fun BodyTab(st: AppState) {
         return
     }
     val have = MF.filter { (k) -> idx.ms.any { it.v[k] != null } }
-    val f = have.firstOrNull { it.first == st.mk } ?: have.first(); val k = f.first; val isW = k == "weight_kg"
+    val f = have.firstOrNull { it.first == st.mk } ?: have.first(); val k = f.first
     val ser = idx.ms.filter { it.v[k] != null }; val last = ser[0]; val prev = ser.getOrNull(1)
     val from = when (st.mr) { "3M" -> st.now - 90L * 86_400_000; "1Y" -> st.now - 365L * 86_400_000; else -> 0L }
-    val pts = ser.filter { it.date >= from }.map { it.date to (if (isW) toU(it.v[k]!!, lb) else it.v[k]!!) }.reversed()
+    val pts = ser.filter { it.date >= from }.map { it.date to mShow(k, it.v[k]!!, lb) }.reversed()
     val photos = idx.ms.filter { !it.photos.isNullOrEmpty() }
     Body {
         Big(mFmt(k, last.v[k]!!, lb), size = 34.sp)
@@ -130,11 +128,11 @@ fun MeasureEditorScreen(st: AppState, s: Screen.MeasureEditor) {
             MF.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     row.forEach { (k, l, _) ->
-                        val cur = e.v[k]?.let { if (k == "weight_kg") r2(toU(it, lb)) else it }
-                        val ph = if (s.isNew) latest?.v?.get(k)?.let { plainN(if (k == "weight_kg") toU(it, lb) else it) } ?: "" else ""
+                        val cur = e.v[k]?.let { r2(mShow(k, it, lb)) }
+                        val ph = if (s.isNew) latest?.v?.get(k)?.let { plainN(r2(mShow(k, it, lb))) } ?: "" else ""
                         Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
                             Mu("$l (${mUnit(k, lb)})", Modifier.padding(bottom = 6.dp), size = 13.sp)
-                            NumCell(cur, ph, { v -> s.e = s.e.copy(v = if (v == null) s.e.v - k else s.e.v + (k to (if (k == "weight_kg") r2(fromU(v, lb)) else v))) }, Modifier.fillMaxWidth())
+                            NumCell(cur, ph, { v -> s.e = s.e.copy(v = if (v == null) s.e.v - k else s.e.v + (k to mStore(k, v, lb))) }, Modifier.fillMaxWidth())
                         }
                     }
                 }
@@ -213,7 +211,7 @@ fun SettingsScreenView(st: AppState) {
             BoxCard("Theme", "Dark is the default. System follows your phone's setting.") {
                 Seg(listOf("dark" to "Dark", "light" to "Light", "system" to "System"), set.theme ?: "dark", { t -> st.setSettings { it.copy(theme = t) } })
             }
-            BoxCard("Units", "Weights everywhere, including your history and bodyweight.") {
+            BoxCard("Units", "Weights everywhere, including your history and bodyweight. Tape measurements use cm with kg and inches with lb.") {
                 Seg(listOf("kg" to "kg", "lb" to "lb"), if (lb) "lb" else "kg", { u -> st.setSettings { it.copy(unit = u) } })
             }
             BoxCard("Weight suggestions", "Hints the next weight in each set from last session: hit your target reps (or the top of your rep range) and it suggests ${if (lb) "+5 lb" else "+2.5 kg"}; otherwise one more rep. A logged RPE above 8.5 holds the weight.") {

@@ -1,5 +1,6 @@
 package app.liftlog
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -17,6 +18,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         platform = AndroidPlatform(this)
         setContent { App(platform) }
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    /** Taps on the workout notification and the home screen widget. */
+    private fun handleIntent(i: Intent?) {
+        val a = i?.getStringExtra(LiveBridge.EXTRA) ?: return
+        i.removeExtra(LiveBridge.EXTRA)
+        LiveBridge.send(a)
+    }
+
+    override fun onDestroy() {
+        LiveBridge.detach()
+        super.onDestroy()
     }
 
     override fun onStart() {

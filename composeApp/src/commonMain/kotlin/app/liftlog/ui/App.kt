@@ -20,7 +20,11 @@ import app.liftlog.data.PlatformBackHandler
 import app.liftlog.data.Store
 import app.liftlog.data.SystemBars
 import app.liftlog.logic.clock
+import app.liftlog.logic.nowMs
+import app.liftlog.logic.widgetInfo
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 @Composable
 fun App(platform: Platform) {
@@ -31,6 +35,13 @@ fun App(platform: Platform) {
         val p = LocalPal.current
         SystemBars(p.dark)
         LaunchedEffect(Unit) { while (true) { st.tick(); delay(250) } }
+        // Once data is loaded: take taps from the notification and widget, and keep both up to date.
+        LaunchedEffect(store.loaded) {
+            if (!store.loaded) return@LaunchedEffect
+            platform.setActionHandler { st.handleAction(it) }
+            launch { snapshotFlow { st.liveInfo() }.distinctUntilChanged().collect { platform.liveWorkout(it) } }
+            launch { snapshotFlow { widgetInfo(st.idx, nowMs()) }.distinctUntilChanged().collect { platform.updateWidget(it) } }
+        }
         val focus = LocalFocusManager.current
         // Close the keyboard whenever the visible screen changes.
         LaunchedEffect(st.stack.size, st.tab) { focus.clearFocus() }

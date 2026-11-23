@@ -26,7 +26,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import app.liftlog.data.LiveInfo
 import app.liftlog.data.Platform
+import app.liftlog.logic.ShareCard
+import app.liftlog.logic.WidgetInfo
 import app.liftlog.db.LiftDb
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -131,14 +134,38 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     private var foreground = true
     private val prefs by lazy { ctx.getSharedPreferences("liftlog", Context.MODE_PRIVATE) }
 
+    /** Asks once for notification permission (rest alerts and the workout notification need it). */
+    private fun askNotifications() {
+        if (!prefs.getBoolean("askedNotif", false) && Build.VERSION.SDK_INT >= 33 &&
+            act.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            prefs.edit().putBoolean("askedNotif", true).apply(); runCatching { permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        }
+    }
+
     override fun setRestEnd(atMillis: Long?) {
         restEnd = atMillis
-        if (atMillis != null && !prefs.getBoolean("askedNotif", false) && Build.VERSION.SDK_INT >= 33 &&
-            act.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            prefs.edit().putBoolean("askedNotif", true).apply(); permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        if (atMillis != null) askNotifications()
         if (!foreground) schedule()
     }
+
+    override fun celebrate() {
+        runCatching {
+            val vib = if (Build.VERSION.SDK_INT >= 31) (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            else @Suppress("DEPRECATION") (ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+            vib.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 35, 70, 35, 70, 60), -1))
+        }
+    }
+
+    override fun liveWorkout(info: LiveInfo?) {
+        if (info != null) askNotifications()
+        LiveNotifier.show(ctx, info)
+    }
+
+    override fun setActionHandler(handler: (String) -> Unit) = LiveBridge.attach(handler)
+
+    override fun updateWidget(info: WidgetInfo) { runCatching { LiftWidget.save(ctx, info) } }
+
+    override fun shareCard(card: ShareCard): Boolean = ShareImage.share(act, card)
     fun onForeground() { foreground = true; cancel() }
     fun onBackground() { foreground = false; schedule() }
 

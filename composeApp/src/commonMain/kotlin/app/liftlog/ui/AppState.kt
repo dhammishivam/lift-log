@@ -1,6 +1,7 @@
 package app.liftlog.ui
 
 import androidx.compose.runtime.*
+import app.liftlog.data.LiveInfo
 import app.liftlog.data.Platform
 import app.liftlog.data.Store
 import app.liftlog.logic.*
@@ -124,6 +125,45 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         if (a.editId == null) startRest(it.rest)
     }
 
+    /* ---------- notification and widget ---------- */
+    private fun nextSet(a: Active): Pair<Int, Int>? {
+        a.exercises.forEachIndexed { ei, e -> e.sets.forEachIndexed { si, s -> if (s.done != true) return ei to si } }
+        return null
+    }
+
+    /** What the ongoing notification shows, or null when no new workout is running. */
+    fun liveInfo(): LiveInfo? {
+        val a = data.active ?: return null
+        if (a.editId != null) return null
+        val total = a.exercises.sumOf { it.sets.size }; val done = a.exercises.sumOf { e -> e.sets.count { it.done == true } }
+        val next = nextSet(a)?.let { (ei, si) ->
+            val it = a.exercises[ei]; val x = idx.exOf(it.eid); val T = typeOf(x.type)
+            val pv = idx.prevSets(it.eid, a.start, a.editId)?.getOrNull(si); val sg = idx.sugFor(a, ei, si)
+            var q = it.sets[si]
+            T.f.forEach { f -> if (fieldVal(q, f, lb) == null) parseNum(phv(it, si, f, pv, sg, lb))?.let { v -> q = withField(q, f, v, lb) } }
+            val vals = if (T.f.any { f -> fieldVal(q, f, lb) != null }) " · " + fmtSet(x.type, q, lb) else ""
+            "${x.name} · set ${setLabel(it.sets, si)}$vals"
+        }
+        return LiveInfo(a.title?.ifBlank { null } ?: defTitle(), a.start, restEnd.takeIf { it > 0 }, next, done, total)
+    }
+
+    /** Taps from the notification and the widget. */
+    fun handleAction(action: String) {
+        when {
+            action == "minus" -> shiftRest(-15_000)
+            action == "plus" -> shiftRest(15_000)
+            action == "skip" -> stopRest()
+            action == "done" -> data.active?.let { a -> nextSet(a)?.let { (ei, si) -> checkSet(this, ei, si) } }
+            action == "open" -> if (data.active != null) openLive()
+            action == "empty" -> { tab = Tab.Workout; startWorkout { Active(id = "w_" + rid(), start = nowMs(), title = "") } }
+            action.startsWith("start:") -> data.routines[action.removePrefix("start:")]?.let { r -> tab = Tab.Workout; startWorkout { fromTemplate(r.name, r.id, r.exercises) } }
+        }
+    }
+
+    fun shareWorkout(w: Workout, dark: Boolean) {
+        if (!platform.shareCard(shareCard(idx, w, lb, dark))) say("Sharing isn't available here")
+    }
+
     fun discardActive() { store.setActive(null); stopRest(); timer = null; stack.removeAll { it is Screen.Live || it is Screen.Finish } }
 
     fun saveWorkout(f: Screen.Finish) {
@@ -141,8 +181,12 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         }
         store.setActive(null); stopRest(); timer = null
         stack.clear(); tab = Tab.History; hv = "list"; wsel = 11
-        val cmp = compareWeight(idx.wVol(w))
-        say(if (a.editId != null) "Workout updated" else "Workout saved. ${cmp.ifEmpty { "Nice work!" }}")
+        val cmp = compareWeight(idx.wVol(w)); val recs = idx.prm[id]?.n ?: 0
+        say(when {
+            a.editId != null -> "Workout updated"
+            recs > 0 -> "Workout saved. 🏆 " + count(recs, "new record") + "!"
+            else -> "Workout saved. ${cmp.ifEmpty { "Nice work!" }}"
+        })
         push(Screen.WorkoutDetail(id))
     }
 

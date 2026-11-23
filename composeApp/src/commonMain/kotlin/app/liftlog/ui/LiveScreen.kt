@@ -176,16 +176,24 @@ fun ExerciseCard(st: AppState, ctx: CardCtx, ei: Int, ssi: Pair<Char, Long>?) {
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp).height(40.dp).clip(RoundedCornerShape(10.dp)).background(p.s1).clickable {
-            upd { e -> val last = e.sets.lastOrNull(); val pp = last?.let { l -> if (l.kg != null || l.reps != null || l.km != null || l.sec != null) SetVals(l.kg, l.reps, l.km, l.sec) else l.p }; e.copy(sets = e.sets + WSet(p = pp)) }
-        }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Icon(Ic.plus, null, Modifier.size(16.dp), tint = p.ink); Spacer(Modifier.width(6.dp)); Txt("Add set", size = 15.sp, weight = FontWeight.SemiBold)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(10.dp)).background(p.s1).clickable {
+                upd { e -> val last = e.sets.lastOrNull(); val pp = last?.let { l -> if (l.kg != null || l.reps != null || l.km != null || l.sec != null) SetVals(l.kg, l.reps, l.km, l.sec) else l.p }; e.copy(sets = e.sets + WSet(p = pp)) }
+            }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Icon(Ic.plus, null, Modifier.size(16.dp), tint = p.ink); Spacer(Modifier.width(6.dp)); Txt("Add set", size = 15.sp, weight = FontWeight.SemiBold)
+            }
+            // Warm-ups are one tap away until the exercise has some.
+            if (isVol(x.type) && it.sets.none { s -> s.t == "w" } && it.sets.none { s -> s.done == true }) Row(Modifier.height(40.dp).clip(RoundedCornerShape(10.dp)).background(p.s1).clickable { addWarmups(st, ctx, ei) }.padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Icon(Ic.up, null, Modifier.size(16.dp), tint = p.wu); Spacer(Modifier.width(6.dp)); Txt("Warm-up", size = 15.sp, weight = FontWeight.SemiBold)
+            }
         }
     }
     Divider()
 }
 
-private fun checkSet(st: AppState, ei: Int, si: Int) {
+/** Ticks a set (filling empty fields from the hints) or unticks it. Also used by the notification's "Complete set". */
+fun checkSet(st: AppState, ei: Int, si: Int) {
     val a = st.data.active ?: return; val idx = st.idx; val lb = st.lb
     val it = a.exercises.getOrNull(ei) ?: return; val s = it.sets.getOrNull(si) ?: return
     val T = typeOf(idx.exOf(it.eid).type)
@@ -201,7 +209,16 @@ private fun checkSet(st: AppState, ei: Int, si: Int) {
             if (it.ss != null && nx?.ss == it.ss) st.say("Superset: next is ${idx.exOf(nx!!.eid).name}") else st.startRest(it.rest)
         }
     } else ns = s.copy(done = false)
+    val before = idx.livePrs(a, ei)[si]
     st.setItems(a.exercises.toMutableList().also { l -> l[ei] = it.copy(sets = it.sets.toMutableList().also { ss -> ss[si] = ns }) })
+    // A record on the set just ticked gets its own toast (it wins over the superset hint).
+    val na = st.data.active ?: return
+    val now = idx.livePrs(na, ei)[si]
+    if (ns.done == true && now != null && now != before) {
+        val x = idx.exOf(it.eid)
+        st.say("🏆 New record: ${x.name}, " + now.joinToString(", ") { k -> (PRL[k] ?: k).lowercase() })
+        st.platform.celebrate()
+    }
 }
 
 private fun toggleTimer(st: AppState, ei: Int, si: Int) {
@@ -236,12 +253,6 @@ private fun exerciseMenu(st: AppState, ctx: CardCtx, ei: Int) {
     val idx = st.idx; val lb = st.lb; val items = ctx.items; val n = items.size; val it = items[ei]; val x = idx.exOf(it.eid); val nx = items.getOrNull(ei + 1)
     val wt = isVol(x.type)
     fun setAll(l: List<ExItem>) = ctx.set(normSS(l))
-    fun workW(): Double? {
-        val si0 = it.sets.indexOfFirst { s -> s.t != "w" }.coerceAtLeast(0); val s = it.sets.getOrNull(si0) ?: return null
-        val pv = idx.prevSets(it.eid, ctx.start, ctx.editId)?.getOrNull(si0)
-        val sg = if (ctx.live && ctx.active != null) idx.sugFor(ctx.active, ei, si0) else null
-        return fieldVal(s, "kg", lb) ?: parseNum(phv(it, si0, "kg", pv, sg, lb))
-    }
     val m = mutableListOf<MenuItem>()
     if (ei < n - 1 && !(it.ss != null && nx?.ss == it.ss)) m += MenuItem("Superset with next exercise") {
         val g = it.ss ?: nx!!.ss ?: ((items.mapNotNull { e -> e.ss }.maxOrNull() ?: 0) + 1)
@@ -249,19 +260,8 @@ private fun exerciseMenu(st: AppState, ctx: CardCtx, ei: Int) {
         setAll(items.mapIndexed { i, e -> when { i == ei || i == ei + 1 -> e.copy(ss = g); old != null && e.ss == old -> e.copy(ss = g); else -> e } })
     }
     if (it.ss != null) m += MenuItem("Remove from superset") { setAll(items.toMutableList().also { l -> l[ei] = it.copy(ss = null) }) }
-    if (wt) m += MenuItem("Add warm-up sets") wu@{
-        val w = workW()
-        if (w == null || w <= 0) { st.say("Enter your working weight first"); return@wu }
-        val u = unitOf(lb); val step = if (lb) 5.0 else 2.5; val bar = if (x.equip == "Barbell") BARS.getValue(u)[0] else 0.0
-        fun rnd(v: Double) = (v / step).roundToInt() * step
-        val list = mutableListOf<Pair<Double, Double>>()
-        if (bar > 0 && w > bar * 1.6) list += bar to 10.0
-        listOf(0.5 to 8.0, 0.7 to 5.0, 0.85 to 3.0).forEach { (pc, r) -> val q = rnd(w * pc); if (q > 0 && q < w && q > (list.lastOrNull()?.first ?: 0.0)) list += q to r }
-        if (list.isEmpty()) { st.say("Working weight is too light for warm-ups"); return@wu }
-        setAll(items.toMutableList().also { l -> l[ei] = it.copy(sets = list.map { (q, r) -> WSet(t = "w", p = SetVals(kg = fromU(q, lb), reps = r)) } + it.sets.filter { s -> s.t != "w" }) })
-        st.say("${list.size} warm-up set${if (list.size > 1) "s" else ""} added")
-    }
-    if (wt && x.equip == "Barbell") m += MenuItem("Plate calculator") { st.push(Screen.Plate(workW()?.let { w -> plainN(w) } ?: "")) }
+    if (wt) m += MenuItem("Add warm-up sets") { addWarmups(st, ctx, ei) }
+    if (wt && x.equip == "Barbell") m += MenuItem("Plate calculator") { st.push(Screen.Plate(workWeight(st, ctx, ei)?.let { w -> plainN(w) } ?: "")) }
     m += MenuItem(if (idx.pin(it.eid).isNotEmpty()) "Edit pinned note" else "Pin a note") { st.push(Screen.PinEditor(it.eid, idx.pin(it.eid))) }
     if (ei > 0) m += MenuItem("Move up") { setAll(items.toMutableList().also { l -> l[ei] = items[ei - 1]; l[ei - 1] = it }) }
     if (ei < n - 1) m += MenuItem("Move down") { setAll(items.toMutableList().also { l -> l[ei] = items[ei + 1]; l[ei + 1] = it }) }
@@ -274,6 +274,27 @@ private fun exerciseMenu(st: AppState, ctx: CardCtx, ei: Int) {
         st.say("${x.name} removed") { ctx.set(snap) }
     }
     st.showMenu(x.name, m)
+}
+
+/** Working weight of an exercise: the first working set's value, or its hint. */
+private fun workWeight(st: AppState, ctx: CardCtx, ei: Int): Double? {
+    val it = ctx.items.getOrNull(ei) ?: return null; val lb = st.lb
+    val si0 = it.sets.indexOfFirst { s -> s.t != "w" }.coerceAtLeast(0); val s = it.sets.getOrNull(si0) ?: return null
+    val pv = st.idx.prevSets(it.eid, ctx.start, ctx.editId)?.getOrNull(si0)
+    val sg = if (ctx.live && ctx.active != null) st.idx.sugFor(ctx.active, ei, si0) else null
+    return fieldVal(s, "kg", lb) ?: parseNum(phv(it, si0, "kg", pv, sg, lb))
+}
+
+/** Replaces an exercise's warm-up sets with a ramp to its working weight. */
+fun addWarmups(st: AppState, ctx: CardCtx, ei: Int) {
+    val it = ctx.items.getOrNull(ei) ?: return; val x = st.idx.exOf(it.eid); val lb = st.lb
+    val w = workWeight(st, ctx, ei)
+    if (w == null || w <= 0) { st.say("Enter your working weight first"); return }
+    val bar = if (x.equip == "Barbell") BARS.getValue(unitOf(lb))[0] else 0.0
+    val list = warmupPlan(w, bar, lb)
+    if (list.isEmpty()) { st.say("Working weight is too light for warm-ups"); return }
+    ctx.set(normSS(ctx.items.toMutableList().also { l -> l[ei] = it.copy(sets = list.map { (q, r) -> WSet(t = "w", p = SetVals(kg = fromU(q, lb), reps = r)) } + it.sets.filter { s -> s.t != "w" }) }))
+    st.say(count(list.size, "warm-up set") + " added: " + list.joinToString(", ") { (q, r) -> "${fmtN(q)}×${fmtN(r)}" })
 }
 
 /* ---------- finish ---------- */
@@ -311,8 +332,28 @@ fun FinishScreen(st: AppState, f: Screen.Finish) {
             if (r != null) Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Txt("Update “${r.name}” routine with these sets", Modifier.weight(1f), size = 15.sp); Toggle(f.upd) { f.upd = !f.upd }
             }
+            val recs = liveRecords(idx, a, lb)
+            if (recs.isNotEmpty()) RecordList(recs)
             if (inc > 0) Txt("$inc incomplete set${if (inc > 1) "s" else ""} will be left out.", size = 14.sp, color = p.wu)
             Btn("Save workout", { st.saveWorkout(f) }, Modifier.fillMaxWidth().padding(top = 16.dp), kind = BtnKind.Primary)
+        }
+    }
+}
+
+/** "New records" box with a trophy per line. */
+@Composable
+fun RecordList(recs: List<RecordLine>) {
+    val p = LocalPal.current
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(14.dp)).background(p.pr.copy(alpha = 0.12f)).padding(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Ic.trophy, null, Modifier.size(18.dp), tint = p.pr); Spacer(Modifier.width(8.dp))
+            Txt(if (recs.size == 1) "New record" else "${recs.size} new records", size = 16.sp, weight = FontWeight.SemiBold, color = p.pr)
+        }
+        recs.forEach { r ->
+            Row(Modifier.padding(top = 6.dp)) {
+                Txt(r.exercise, Modifier.weight(1f), size = 14.sp, maxLines = 1)
+                Txt(r.what, Modifier.padding(start = 8.dp), size = 14.sp, weight = FontWeight.SemiBold)
+            }
         }
     }
 }

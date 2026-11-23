@@ -39,6 +39,9 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
                 Stat("Sets", idx.wSets(w).toString(), Modifier.weight(1f)); Stat("Records", pm.n.toString(), Modifier.weight(1f))
             }
             if (cmp.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) { Icon(Ic.dumb, null, Modifier.size(18.dp), tint = p.mu); Spacer(Modifier.width(8.dp)); Mu(cmp, size = 15.sp) }
+            val recs = workoutRecords(idx, w, lb)
+            if (recs.isNotEmpty()) RecordList(recs)
+            Btn("Share", { st.shareWorkout(w, p.dark) }, Modifier.padding(top = 10.dp), small = true, icon = Ic.share)
             if (!w.notes.isNullOrBlank()) Txt(w.notes, Modifier.padding(top = 10.dp), size = 15.sp)
             w.exercises.forEachIndexed { ei, it2 ->
                 val x = idx.exOf(it2.eid); val q = ss(it2.ss)
@@ -63,6 +66,7 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
 
 private fun workoutMenu(st: AppState, s: Screen.WorkoutDetail, w: Workout) {
     st.showMenu(w.title, listOf(
+        MenuItem("Share as image") { st.shareWorkout(w, st.data.settings.theme != "light") },
         MenuItem("Edit workout") { st.startWorkout { Active(id = w.id, editId = w.id, start = w.start, end = w.end, title = w.title, notes = w.notes, routineId = w.routineId, exercises = w.exercises.map { it.copy(sets = it.sets.map { s2 -> s2.copy(done = true) }) }) } },
         MenuItem("Repeat workout") { st.startWorkout { st.fromTemplate(w.title, w.routineId, w.exercises) } },
         MenuItem("Save as routine") { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = w.title, exercises = w.exercises.map { it.copy(note = "", sets = it.sets.map { q -> WSet(t = q.t, kg = q.kg, reps = q.reps, km = q.km, sec = q.sec) }) }), true)) },

@@ -3,6 +3,20 @@ package app.liftlog.data
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import app.cash.sqldelight.db.SqlDriver
+import app.liftlog.logic.ShareCard
+import app.liftlog.logic.WidgetInfo
+
+/** What the "workout in progress" notification shows. */
+data class LiveInfo(
+    val title: String,
+    val start: Long,
+    /** When the rest timer ends, or null when no rest is running. */
+    val restEnd: Long?,
+    /** "Bench Press (Barbell) · set 2 · 60 kg × 8", or null when every set is ticked. */
+    val next: String?,
+    val done: Int,
+    val total: Int,
+)
 
 /** Everything the shared code needs from the phone. Android implements it now; iOS has a starter implementation. */
 interface Platform {
@@ -29,6 +43,20 @@ interface Platform {
     fun alert()
     /** When the rest timer ends (null = no rest running). Used to alert while the app is in the background. */
     fun setRestEnd(atMillis: Long?)
+
+    /** A short buzz for a new record. */
+    fun celebrate() {}
+    /** Ongoing notification while a workout runs; null removes it. */
+    fun liveWorkout(info: LiveInfo?) {}
+    /**
+     * Receives taps from the notification and the home screen widget: "minus", "plus", "skip", "done",
+     * "open", "empty" or "start:<routine id>". Taps that arrived before this was set are delivered now.
+     */
+    fun setActionHandler(handler: (String) -> Unit) {}
+    /** Refreshes the home screen widget. */
+    fun updateWidget(info: WidgetInfo) {}
+    /** Shares a workout image. Returns false where sharing images isn't available. */
+    fun shareCard(card: ShareCard): Boolean = false
 }
 
 /** Keeps the screen awake while shown. */
