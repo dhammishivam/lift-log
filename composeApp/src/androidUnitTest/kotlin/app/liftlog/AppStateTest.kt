@@ -66,6 +66,16 @@ class AppStateTest {
         assertNull(st.data.active!!.exercises[0].sets[0].done)
     }
 
+    @Test fun aWeightedSetNeedsWeightAndReps() {
+        val (st, _) = loadedState(Seed().active(Active(id = "a1", start = now, exercises = listOf(bench(listOf(WSet(reps = 8.0), WSet(kg = 60.0)))))))
+        checkSet(st, 0, 0)
+        assertEquals("Add the weight first", st.toast!!.text)
+        checkSet(st, 0, 1)
+        assertEquals("Add the reps first", st.toast!!.text)
+        assertTrue(st.data.active!!.exercises[0].sets.none { it.done == true })
+        assertEquals(0L, st.restEnd)
+    }
+
     @Test fun supersetsSkipRestUntilTheLastExercise() {
         val a = Active(id = "a1", start = now, exercises = listOf(bench(listOf(WSet(kg = 50.0, reps = 10.0))).copy(ss = 1), squat(listOf(WSet(kg = 80.0, reps = 5.0))).copy(ss = 1)))
         val (st, _) = loadedState(Seed().active(a))
@@ -232,6 +242,19 @@ class AppStateTest {
         waitUntil("second import") { st.importStatus.startsWith("Done") }
         assertTrue(st.importStatus, st.importStatus.contains("no new workouts (2 already in Lift Log)"))
         assertEquals(2, st.data.workouts.size)
+    }
+
+    @Test fun filesSharedFromHevyImportAndOpenTheGuideWithASummary() {
+        val (st, _) = loadedState()
+        st.importIncoming(listOf("workouts.csv" to HEVY_WORKOUTS, "measurements.csv" to HEVY_MEASURES))
+        waitUntil("shared import") { st.lastImport != null }
+        assertEquals(Screen.HevyGuide, st.stack.last())
+        val r = st.lastImport!!
+        assertEquals(2, r.workouts); assertEquals(2, r.measures); assertEquals(1, r.exercises); assertEquals(0, r.skipped)
+        st.importIncoming(listOf("workouts.csv" to HEVY_WORKOUTS))
+        waitUntil("second shared import") { st.lastImport!!.workouts == 0 }
+        assertEquals(2, st.lastImport!!.skipped)
+        assertEquals(1, st.stack.size) // the guide isn't stacked twice
     }
 
     @Test fun backupRestoresEverything() {

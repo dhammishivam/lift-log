@@ -63,6 +63,10 @@ interface Platform {
     fun mascot(kind: String): ImageBitmap? = null
     /** Shares a workout image. Returns false where sharing images isn't available. */
     fun shareCard(card: ShareCard): Boolean = false
+    /** Other apps can hand their exports straight to Lift Log (Android's share and open-with). */
+    val receivesShares: Boolean get() = false
+    /** Opens another installed app, e.g. Hevy to export from. False if it isn't installed or this can't be done here. */
+    fun openApp(pkg: String): Boolean = false
 }
 
 /** Keeps the screen awake while shown. */
@@ -76,3 +80,10 @@ expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)
 /** Light or dark status and navigation bar icons to match the app theme. */
 @Composable
 expect fun SystemBars(dark: Boolean)
+
+/** Files handed to the app from outside (shared from Hevy, or opened from a file manager), waiting for the UI to import them. */
+object Incoming {
+    val files = kotlinx.coroutines.flow.MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    fun offer(f: List<Pair<String, String>>) { if (f.isNotEmpty()) files.value = files.value + f }
+    fun take(): List<Pair<String, String>> = files.value.also { files.value = emptyList() }
+}

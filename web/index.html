@@ -605,6 +605,9 @@ const dShort=ms=>new Date(ms).toLocaleDateString('en-GB',{day:'numeric',month:'s
 const dLong=ms=>new Date(ms).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',...(new Date(ms).getFullYear()!==yr?{year:'numeric'}:{})});
 const tShort=ms=>new Date(ms).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
 const toLocalInput=ms=>{const d=new Date(ms),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`};
+// What a set must have before it can be ticked (same rules as the app's setProblem).
+const REQUIRED={wr:[['kg','the weight'],['reps','the reps']],wbw:[['reps','the reps']],bw:[['reps','the reps']],dur:[['sec','the time']],cd:[['km','the distance']]};
+function setProblem(type,s){const m=(REQUIRED[type]||REQUIRED.wr).find(([f])=>!(s[f]>0));return m?`Add ${m[1]} first`:null}
 const fv=(s,f)=>{if(!s)return'';if(f==='min')return s.sec==null?'':r2(s.sec/60);if(f==='kg')return s.kg==null?'':r2(toU(s.kg));const v=s[f];return v==null?'':v};
 const setF=(s,f,v)=>{if(f==='min')s.sec=v==null?null:Math.round(v*60);else if(f==='kg')s.kg=v==null?null:Math.round(fromU(v)*1000)/1000;else s[f]=v};
 const fmtSet=(t,s)=>{if(!s)return'';const kg=fmtN(toU(s.kg||0)),u=UNIT(),r=s.reps??0,q=s.rpe?` @${s.rpe}`:'';switch(t){case'wbw':return`+${kg} ${u} × ${r}${q}`;case'bw':return`${r} reps${q}`;case'dur':return fmtSec(s.sec);case'cd':return`${fmtN(s.km||0)} km · ${fmtSec(s.sec)}`;default:return`${kg} ${u} × ${r}${q}`}};
@@ -1560,7 +1563,7 @@ document.addEventListener('click',async e=>{
   case'usepv':{const it=m.exercises[ei],s=it.sets[si],pv=prevFor(prevSets(it.eid,m.start,m.editId),it.sets,si);if(!pv||s.done)break;Object.assign(s,valsOf(pv));paint(sh);touch(sh);break}
   case'check':{ensureAudio();const it=m.exercises[ei],s=it.sets[si],T=TYPES[ex(it.eid).type]||TYPES.wr;
     if(!s.done){const pv=prevFor(prevSets(it.eid,m.start,m.editId),it.sets,si);T.f.forEach(f=>{if(fv(s,f)===''){const p=phv(it,si,f,pv,sugFor(m,it,si));if(p!=='')setF(s,f,num(p))}});
-      if(T.f.every(f=>fv(s,f)===''))return toast('Enter a value first');s.done=true;if(!A.editId){const nx=m.exercises[ei+1];if(it.ss!=null&&nx&&nx.ss===it.ss)toast(`Superset: next is ${ex(nx.eid).name}`);else startRest(it.rest)}}else s.done=false;
+      if(T.f.every(f=>fv(s,f)===''))return toast('Enter a value first');{const pb=setProblem(ex(it.eid).type,s);if(pb)return toast(pb)}s.done=true;if(!A.editId){const nx=m.exercises[ei+1];if(it.ss!=null&&nx&&nx.ss===it.ss)toast(`Superset: next is ${ex(nx.eid).name}`);else startRest(it.rest)}}else s.done=false;
     const before=(s.pr||[]).join();markPRs(m,ei);
     if(s.done&&s.pr&&s.pr.join()!==before){const k=s.pr[0],more=s.pr.length>1?` (+${s.pr.length-1} more)`:'';
       if(!celebrate(mascotFor(k),'New record!',`${ex(it.eid).name}\n${PRL[k]}: ${prVal(k,s)}${more}`))toast(`🏆 New record: ${ex(it.eid).name}, ${s.pr.map(q=>PRL[q].toLowerCase()).join(', ')}`)}

@@ -83,4 +83,6 @@ object Ic {
     val chat = icon("chat", "M4 5h16v11H9l-5 4z")
     val share = icon("share", circle(18f, 5f, 2.5f), circle(6f, 12f, 2.5f), circle(18f, 19f, 2.5f), "M8.2 10.9l7.6-4.6M8.2 13.1l7.6 4.6")
     val warn = icon("warn", "M12 4l9 16H3zM12 10v4M12 17.5v.5")
+    val import = icon("import", "M12 4v11M7 10l5 5 5-5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2")
+    val user = icon("user", circle(12f, 8f, 4f), "M4 21a8 8 0 0 1 16 0")
 }

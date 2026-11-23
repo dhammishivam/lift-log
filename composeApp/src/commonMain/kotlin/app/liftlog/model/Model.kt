@@ -121,6 +121,8 @@ data class Settings(
     val profile: Profile? = null,
     /** Mascot celebrations for records (on unless false). */
     val cele: Boolean? = null,
+    /** Shown on the Profile tab. */
+    val name: String? = null,
     /** Steps of the Move from Hevy guide the user has ticked off. */
     val hevy: List<String>? = null,
     /** App only: Anthropic API key and model for the coach. Never exported. */

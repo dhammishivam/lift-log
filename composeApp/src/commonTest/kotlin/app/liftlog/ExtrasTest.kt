@@ -8,6 +8,17 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ExtrasTest {
+    @Test fun setsNeedTheirRequiredFields() {
+        assertEquals("Add the weight first", setProblem("wr", WSet(reps = 8.0)))
+        assertEquals("Add the weight first", setProblem("wr", WSet(kg = 0.0, reps = 8.0)))
+        assertEquals("Add the reps first", setProblem("wr", WSet(kg = 60.0)))
+        assertEquals(null, setProblem("wr", WSet(kg = 60.0, reps = 8.0)))
+        assertEquals(null, setProblem("wbw", WSet(reps = 10.0)))      // added weight is optional
+        assertEquals(null, setProblem("bw", WSet(reps = 12.0)))
+        assertEquals("Add the time first", setProblem("dur", WSet()))
+        assertEquals("Add the distance first", setProblem("cd", WSet(sec = 600.0)))
+    }
+
     @Test fun tapeShowsCmWithKgAndInchesWithLb() {
         assertEquals("cm", mUnit("waist_in", false)); assertEquals("in", mUnit("waist_in", true))
         assertEquals("kg", mUnit("weight_kg", false)); assertEquals("%", mUnit("fat_percent", false))

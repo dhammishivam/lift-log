@@ -1,6 +1,7 @@
 package app.liftlog.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -92,12 +93,12 @@ private val BACK = listOf("Traps" to listOf(e(100, 74, 25, 12)), "Shoulders" to 
     "Hamstrings" to listOf(e(84, 258, 12, 40), e(116, 258, 12, 40)), "Calves" to listOf(e(84, 328, 11, 28), e(116, 328, 11, 28)))
 
 @Composable
-fun BodyMap(cnt: Map<String, Int>) {
+fun BodyMap(cnt: Map<String, Int>, maxWidth: androidx.compose.ui.unit.Dp = 340.dp, legend: Boolean = true) {
     val p = LocalPal.current
     val mx = maxOf(1, cnt.values.maxOrNull() ?: 0)
     fun fill(m: String): Color { val v = cnt[m] ?: 0; return if (v == 0) p.s2 else lerp(p.s2, p.ac, 0.25f + 0.75f * v / mx) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Row(Modifier.widthIn(max = 340.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.widthIn(max = maxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Front" to FRONT, "Back" to BACK).forEach { (label, parts) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Canvas(Modifier.fillMaxWidth().aspectRatio(156f / 384f)) {
@@ -113,10 +114,29 @@ fun BodyMap(cnt: Map<String, Int>) {
                 }
             }
         }
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (legend) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Mu("Fewer sets", size = 13.sp); Spacer(Modifier.width(8.dp))
             Canvas(Modifier.width(90.dp).height(8.dp)) { drawRoundRect(Brush.horizontalGradient(listOf(p.s2, p.ac)), cornerRadius = CornerRadius(4.dp.toPx())) }
             Spacer(Modifier.width(8.dp)); Mu("More", size = 13.sp)
         }
+    }
+}
+
+/** "Muscles worked" for one workout: a small body map and the sets per muscle. */
+@Composable
+fun MusclesWorked(cnt: Map<String, Int>) {
+    if (cnt.isEmpty()) return
+    val p = LocalPal.current
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+        Txt("Muscles worked", size = 17.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        BodyMap(cnt, maxWidth = 230.dp, legend = false)
+        FlowRowX {
+            cnt.forEach { (m, n) ->
+                Row(Modifier.background(p.s1, androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Txt(m, size = 14.sp); Spacer(Modifier.width(6.dp)); Txt("$n", size = 14.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = p.ac)
+                }
+            }
+        }
+        Mu("Working sets per main muscle.", Modifier.padding(top = 6.dp), size = 13.sp)
     }
 }

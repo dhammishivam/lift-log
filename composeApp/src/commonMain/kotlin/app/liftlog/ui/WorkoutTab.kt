@@ -79,6 +79,7 @@ fun WorkoutTab(st: AppState) {
             // Two ways in: a proven program picked for you, or your own routine.
             StartCard(Ic.trophy, "Use a program", "Answer a few questions and pick a proven plan for your week: full body, upper / lower, push / pull / legs and more.", primary = true) { openPrograms(st) }
             StartCard(Ic.plus, "Build your own", "Pick exercises, sets and rest times and save it as a routine.") { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = ""), true)) }
+            if (idx.ws.isEmpty()) StartCard(Ic.import, "Coming from Hevy?", "Bring your workouts, measurements and routines across in a couple of minutes.") { st.push(Screen.HevyGuide) }
             if (idx.ws.isNotEmpty()) StartCard(Ic.cal, "Build from my workouts", "Turn workouts you've repeated into routines.") { val n = st.buildRoutines(); if (n > 0) st.say(count(n, "routine") + " added") }
         }
         folders.forEach { f ->

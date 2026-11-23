@@ -41,6 +41,8 @@ fun App(platform: Platform) {
             platform.setActionHandler { st.handleAction(it) }
             launch { snapshotFlow { st.liveInfo() }.distinctUntilChanged().collect { platform.liveWorkout(it) } }
             launch { snapshotFlow { widgetInfo(st.idx, nowMs()) }.distinctUntilChanged().collect { platform.updateWidget(it) } }
+            // Files shared into the app, e.g. Hevy's export opened with Lift Log.
+            launch { app.liftlog.data.Incoming.files.collect { if (it.isNotEmpty()) st.importIncoming(app.liftlog.data.Incoming.take()) } }
         }
         val focus = LocalFocusManager.current
         // Close the keyboard whenever the visible screen changes.
@@ -52,7 +54,7 @@ fun App(platform: Platform) {
             } else {
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Big(when (st.tab) { Tab.Workout -> "Workout"; Tab.History -> "History"; Tab.Exercises -> "Exercises"; Tab.Body -> "Measurements" }, Modifier.weight(1f), size = 32.sp)
+                        Big(when (st.tab) { Tab.Workout -> "Workout"; Tab.History -> "Profile"; Tab.Exercises -> "Exercises"; Tab.Body -> "Measurements" }, Modifier.weight(1f), size = 32.sp)
                         IconBtn(Ic.gear, "Settings", { st.push(Screen.SettingsScreen) })
                     }
                     Box(Modifier.weight(1f)) {
@@ -100,6 +102,7 @@ private fun ScreenHost(st: AppState, s: Screen) {
         is Screen.Coach -> CoachScreen(st)
         is Screen.PinEditor -> PinEditorScreen(st, s)
         is Screen.HevyGuide -> HevyGuideScreen(st)
+        is Screen.Stats -> StatsScreen(st, s)
         is Screen.Programs -> ProgramsScreen(st, s)
     }
 }
@@ -109,7 +112,7 @@ private fun TabBar(st: AppState) {
     val p = LocalPal.current
     Divider()
     Row(Modifier.fillMaxWidth().background(p.bg)) {
-        listOf(Triple(Tab.Workout, "Workout", Ic.dumb), Triple(Tab.History, "History", Ic.cal), Triple(Tab.Exercises, "Exercises", Ic.chart), Triple(Tab.Body, "Body", Ic.ruler)).forEach { (t, l, i) ->
+        listOf(Triple(Tab.Workout, "Workout", Ic.dumb), Triple(Tab.History, "Profile", Ic.user), Triple(Tab.Exercises, "Exercises", Ic.chart), Triple(Tab.Body, "Body", Ic.ruler)).forEach { (t, l, i) ->
             val on = st.tab == t
             Column(Modifier.weight(1f).heightIn(min = 58.dp).clickable { st.tab = t }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Icon(i, null, Modifier.size(22.dp), tint = if (on) p.ac else p.mu)

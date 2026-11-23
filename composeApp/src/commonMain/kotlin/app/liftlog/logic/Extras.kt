@@ -162,3 +162,44 @@ fun widgetInfo(idx: Index, now: Long): WidgetInfo {
         nextRoutineId = r?.id, nextRoutineName = r?.name,
     )
 }
+
+/** What a set of this exercise type must have before it can be ticked, with how to name it when it's missing.
+ *  Weight & reps needs both; weighted bodyweight only needs reps (the added weight is optional). */
+val REQUIRED: Map<String, List<Pair<String, String>>> = mapOf(
+    "wr" to listOf("kg" to "the weight", "reps" to "the reps"),
+    "wbw" to listOf("reps" to "the reps"),
+    "bw" to listOf("reps" to "the reps"),
+    "dur" to listOf("sec" to "the time"),
+    "cd" to listOf("km" to "the distance"),
+)
+
+/** "Add the weight first" when a required field is empty or zero, else null. */
+fun setProblem(type: String, s: WSet): String? {
+    val need = REQUIRED[type] ?: REQUIRED.getValue("wr")
+    val miss = need.firstOrNull { (f, _) ->
+        val v = when (f) { "kg" -> s.kg; "reps" -> s.reps; "sec" -> s.sec; "km" -> s.km; else -> null }
+        v == null || v <= 0.0
+    } ?: return null
+    return "Add ${miss.second} first"
+}
+
+/** Working sets per main muscle, most first (warm-ups left out). [doneOnly] counts only ticked sets, for a live workout. */
+fun muscleSets(idx: Index, items: List<ExItem>, doneOnly: Boolean = false): Map<String, Int> {
+    val m = HashMap<String, Int>()
+    items.forEach { it2 ->
+        val n = working(it2.sets).count { s -> !doneOnly || s.done == true }
+        if (n > 0) { val mu = idx.exOf(it2.eid).muscle; m[mu] = (m[mu] ?: 0) + n }
+    }
+    return m.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).associate { it.key to it.value }
+}
+
+/** All-time totals for the Profile header. */
+data class ProfileStats(val workouts: Int, val ms: Long, val vol: Double, val records: Int, val since: Long?)
+
+fun profileStats(idx: Index): ProfileStats = ProfileStats(
+    workouts = idx.ws.size,
+    ms = idx.ws.sumOf { (it.end - it.start).coerceAtLeast(0) },
+    vol = idx.ws.sumOf { idx.wVol(it) },
+    records = idx.ws.sumOf { idx.prm[it.id]?.n ?: 0 },
+    since = idx.ws.lastOrNull()?.start,
+)

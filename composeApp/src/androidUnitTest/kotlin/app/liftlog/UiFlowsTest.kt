@@ -90,7 +90,7 @@ class UiFlowsTest {
 
     @Test fun emptyHomeOffersAProgramOrYourOwnRoutine() {
         val p = launch()
-        see("Use a program"); see("Build your own")
+        see("Use a program"); see("Build your own"); see("Coming from Hevy?")
         assertTrue(!has("Build from my workouts"))
         assertTrue("widget gets data on start", p.widgets.isNotEmpty())
         assertNull(p.widgets.last().activeStart)
@@ -160,7 +160,7 @@ class UiFlowsTest {
         tap("Share")
         assertEquals("Push", p.shared.single().title)
         back()
-        see("History")
+        see("Profile"); see("Dashboard")
     }
 
     @Test fun warmUpButtonAddsARampToTheWorkingWeight() {
@@ -215,9 +215,17 @@ class UiFlowsTest {
 
     /* ---------- other screens ---------- */
 
+    @Test fun profileShowsTotalsDashboardAndMusclesWorked() {
+        launch(Seed().workout(lastPush))
+        tap("Profile"); see("Add your name"); see("Records"); see("Push")
+        tap("Add your name"); type(0, "Shivam"); tap("Save"); see("Shivam")
+        tap("Muscles"); see("Working sets in the last 30 days", sub = true); back()
+        tap("Push"); see("Muscles worked"); see("Chest")
+    }
+
     @Test fun historyAndExerciseRecords() {
         launch(Seed().workout(lastPush))
-        tap("History"); see("Push"); see("60 kg × 8")
+        tap("Profile"); see("Push"); see("60 kg × 8")
         tap("Exercises"); tap("Bench Press (Barbell)")
         see("Personal records"); see("Heaviest weight")
     }

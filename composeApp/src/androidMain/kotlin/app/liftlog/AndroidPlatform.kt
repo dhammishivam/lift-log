@@ -165,6 +165,13 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
 
     override fun updateWidget(info: WidgetInfo) { runCatching { LiftWidget.save(ctx, info) } }
 
+    override val receivesShares: Boolean get() = true
+
+    override fun openApp(pkg: String): Boolean {
+        val i = act.packageManager.getLaunchIntentForPackage(pkg) ?: return false
+        return runCatching { act.startActivity(i); true }.getOrDefault(false)
+    }
+
     override fun shareCard(card: ShareCard): Boolean = ShareImage.share(act, card)
 
     override fun mascot(kind: String): ImageBitmap? {

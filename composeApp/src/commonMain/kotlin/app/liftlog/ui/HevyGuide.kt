@@ -27,7 +27,9 @@ private fun steps(st: AppState): List<Step> {
     val hevyWorkouts = idx.ws.count { it.src == "hevy" }
     return listOf(
         Step("export", "Export your data from Hevy",
-            "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files to this phone (Downloads, Files or Drive). Do this before your Hevy subscription ends."),
+            if (st.platform.receivesShares)
+                "In Hevy: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts and pick Lift Log in the list that opens: the import starts by itself and you'll land back here. Then do the same for Export Measurements. If Hevy saves the file instead, open it from Files or Downloads with Lift Log, or use Choose files below."
+            else "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this browser can reach them. Do this before your Hevy subscription ends."),
         Step("import", "Import both files here",
             if (hevyWorkouts > 0) "${count(hevyWorkouts, "Hevy workout")} and ${count(idx.ms.size, "measurement entry", "measurement entries")} are in Lift Log. Importing the same file again won't create duplicates."
             else "Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.",
@@ -65,9 +67,11 @@ fun HevyGuideScreen(st: AppState) {
         Body {
             Mu("$n of $total done. Your Hevy history, PRs and charts carry over; nothing here deletes anything in Hevy.", size = 15.sp)
             Spacer(Modifier.height(8.dp))
+            st.lastImport?.let { ImportResult(st, it) }
             all.forEachIndexed { i, s ->
                 StepCard(i + 1, s, isDone(s)) {
                     when (s.id) {
+                        "export" -> if (st.platform.receivesShares) Btn("Open Hevy", { if (!st.platform.openApp("com.hevy")) st.say("Hevy isn't installed on this phone") }, kind = if (isDone(s)) BtnKind.Plain else BtnKind.Primary)
                         "import" -> {
                             Btn("Choose files", { st.importFiles() }, kind = if (s.auto) BtnKind.Plain else BtnKind.Primary)
                             if (st.importStatus.isNotEmpty()) Mu(st.importStatus, Modifier.padding(top = 8.dp))
@@ -114,5 +118,34 @@ private fun StepCard(n: Int, s: Step, done: Boolean, actions: @Composable Column
         }
         Mu(s.text, Modifier.padding(top = 6.dp, bottom = 10.dp), size = 15.sp)
         actions()
+    }
+}
+
+/** What the last import brought in, with where to go next. */
+@Composable
+private fun ImportResult(st: AppState, r: ImportSummary) {
+    val p = LocalPal.current
+    val lines = buildList {
+        if (r.workouts > 0) add(count(r.workouts, "workout"))
+        if (r.measures > 0) add(count(r.measures, "measurement entry", "measurement entries"))
+        if (r.routines > 0) add(count(r.routines, "routine") + " rebuilt")
+        if (r.exercises > 0) add(count(r.exercises, "custom exercise"))
+        if (r.backup > 0) add("${r.backup} items from a backup")
+    }
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp).card(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(if (lines.isEmpty()) Ic.warn else Ic.check, null, Modifier.size(20.dp), tint = if (lines.isEmpty()) p.mu else p.ok)
+            Spacer(Modifier.width(8.dp))
+            Txt(if (lines.isEmpty()) "Nothing new imported" else "Imported", size = 17.sp, weight = FontWeight.SemiBold)
+        }
+        if (lines.isNotEmpty()) Txt(lines.joinToString(" · "), Modifier.padding(top = 6.dp), size = 16.sp)
+        if (r.skipped > 0) Mu("${r.skipped} already in Lift Log, so skipped.", Modifier.padding(top = 4.dp), size = 14.sp)
+        if (r.unknown.isNotEmpty()) Mu("Not a Hevy export: ${r.unknown.joinToString(", ")}.", Modifier.padding(top = 4.dp), size = 14.sp)
+        if (r.workouts > 0 && r.measures == 0 && st.idx.ms.isEmpty()) Mu("Next: export Measurements from Hevy the same way.", Modifier.padding(top = 4.dp), size = 14.sp)
+        if (r.workouts > 0 || r.routines > 0) Spacer(Modifier.height(10.dp))
+        if (r.workouts > 0 || r.routines > 0) FlowRowX {
+            if (r.workouts > 0) Btn("See my history", { st.stack.clear(); st.tab = Tab.History }, kind = BtnKind.Primary, small = true)
+            if (st.idx.rs.isNotEmpty()) Btn("See my routines", { st.stack.clear(); st.tab = Tab.Workout }, small = true)
+        }
     }
 }

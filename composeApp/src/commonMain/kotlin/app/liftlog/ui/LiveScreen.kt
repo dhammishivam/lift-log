@@ -205,6 +205,7 @@ fun checkSet(st: AppState, ei: Int, si: Int) {
         var q = s
         T.f.forEach { f -> if (fieldVal(q, f, lb) == null) parseNum(phv(it, si, f, pv, sg, lb))?.let { v -> q = withField(q, f, v, lb) } }
         if (T.f.all { f -> fieldVal(q, f, lb) == null }) { st.say("Enter a value first"); return }
+        setProblem(idx.exOf(it.eid).type, q)?.let { st.say(it); return }
         ns = q.copy(done = true)
         if (a.editId == null) {
             val nx = a.exercises.getOrNull(ei + 1)
@@ -340,6 +341,7 @@ fun FinishScreen(st: AppState, f: Screen.Finish) {
             }
             val recs = liveRecords(idx, a, lb)
             if (recs.isNotEmpty()) RecordList(recs)
+            MusclesWorked(muscleSets(idx, a.exercises, doneOnly = true))
             if (inc > 0) Txt("$inc incomplete set${if (inc > 1) "s" else ""} will be left out.", size = 14.sp, color = p.wu)
             Btn("Save workout", { st.saveWorkout(f) }, Modifier.fillMaxWidth().padding(top = 16.dp), kind = BtnKind.Primary)
         }

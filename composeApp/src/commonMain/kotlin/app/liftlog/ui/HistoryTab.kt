@@ -30,21 +30,80 @@ fun HistoryTab(st: AppState) {
     val idx = st.idx
     if (idx.ws.isEmpty()) {
         Body {
-            Column(Modifier.fillMaxWidth().card(20.dp)) {
+            ProfileHeader(st); Dashboard(st)
+            Column(Modifier.fillMaxWidth().padding(top = 12.dp).card(20.dp)) {
                 Txt("No workouts yet", weight = FontWeight.SemiBold)
-                Mu("Finished workouts land here with their time, volume and records. Coming from Hevy? Bring your whole history across in Settings.", Modifier.padding(top = 6.dp, bottom = 14.dp), size = 15.sp)
-                FlowRowX { Btn("Import from Hevy", { st.push(Screen.SettingsScreen) }, kind = BtnKind.Primary); Btn("Start a workout", { st.tab = Tab.Workout }) }
+                Mu("Finished workouts land here with their time, volume and records. Coming from Hevy? Bring your whole history across.", Modifier.padding(top = 6.dp, bottom = 14.dp), size = 15.sp)
+                FlowRowX { Btn("Import from Hevy", { st.push(Screen.HevyGuide) }, kind = BtnKind.Primary); Btn("Start a workout", { st.tab = Tab.Workout }) }
             }
         }
         return
     }
+    HistoryList(st)
+}
+
+/** Calendar, Muscles and Statistics, each opened from a Profile tile. */
+@Composable
+fun StatsScreen(st: AppState, s: Screen.Stats) {
     Column(Modifier.fillMaxSize()) {
-        Seg(listOf("list" to "Workouts", "cal" to "Calendar", "mus" to "Muscles", "rep" to "Report"), st.hv, { st.hv = it }, Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), fill = true)
-        when (st.hv) {
-            "cal" -> Body { CalendarView(st) }
-            "mus" -> Body { MusclesView(st) }
-            "rep" -> Body { ReportView(st) }
-            else -> HistoryList(st)
+        TopBar(when (s.view) { "cal" -> "Calendar"; "mus" -> "Muscles"; else -> "Statistics" }, left = { IconBtn(Ic.left, "Back", { st.pop() }) })
+        Body { when (s.view) { "cal" -> CalendarView(st); "mus" -> MusclesView(st); else -> ReportView(st) } }
+    }
+}
+
+/** Name, avatar and all-time totals at the top of the Profile tab. */
+@Composable
+private fun ProfileHeader(st: AppState) {
+    val p = LocalPal.current; val lb = LocalLb.current
+    val name = st.data.settings.name.orEmpty()
+    var edit by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var draft by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(name) }
+    val ps = profileStats(st.idx)
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(64.dp).clip(CircleShape).background(p.ac.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                if (name.isNotBlank()) Txt(name.trim().first().uppercase(), size = 28.sp, weight = FontWeight.Bold, color = p.ac)
+                else Icon(Ic.user, null, Modifier.size(30.dp), tint = p.ac)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                if (edit) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Field(null, draft, { draft = it }, Modifier.weight(1f), placeholder = "Your name")
+                    Spacer(Modifier.width(8.dp))
+                    Btn("Save", { st.setSettings { it.copy(name = draft.trim().ifBlank { null }) }; edit = false }, small = true, kind = BtnKind.Primary)
+                } else {
+                    Txt(name.ifBlank { "Add your name" }, Modifier.clickable { draft = name; edit = true }, size = 22.sp, weight = FontWeight.SemiBold, color = if (name.isBlank()) p.mu else p.ink)
+                    Mu(if (ps.since != null) "Training since ${ldt(ps.since).let { monthLabel(it.year, it.monthNumber) }}" else "Your training, all in one place", size = 14.sp)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+            Stat("Workouts", ps.workouts.toString(), Modifier.weight(1f))
+            Stat("Time", dur(ps.ms), Modifier.weight(1f))
+            Stat("Volume", wv(ps.vol, lb), Modifier.weight(1f))
+            Stat("Records", ps.records.toString(), Modifier.weight(1f))
+        }
+    }
+}
+
+/** Shortcuts under the Profile header. */
+@Composable
+private fun Dashboard(st: AppState) {
+    val tiles = listOf(
+        Triple("Statistics", Ic.chart) { st.push(Screen.Stats("rep")) },
+        Triple("Muscles", Ic.dumb) { st.push(Screen.Stats("mus")) },
+        Triple("Calendar", Ic.cal) { st.push(Screen.Stats("cal")) },
+        Triple("Measures", Ic.ruler) { st.tab = Tab.Body },
+    )
+    Label("Dashboard")
+    tiles.chunked(2).forEach { row ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { (label, icon, go) ->
+                val p = LocalPal.current
+                Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(p.s1).clickable { go() }.padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, null, Modifier.size(20.dp), tint = p.ac); Spacer(Modifier.width(10.dp)); Txt(label, size = 16.sp, weight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }
@@ -58,6 +117,7 @@ private fun HistoryList(st: AppState) {
     val mx = maxOf(1.0, vals.maxOrNull() ?: 0.0); val v = vals[st.wsel]
     val months = idx.ws.groupBy { val d = ldt(it.start); d.year * 12 + d.monthNumber }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
+        item { ProfileHeader(st); Dashboard(st) }
         item {
             Column(Modifier.fillMaxWidth().padding(top = 6.dp).card()) {
                 Row(verticalAlignment = Alignment.Top) {
@@ -115,7 +175,7 @@ fun bestSet(type: String, sets: List<app.liftlog.model.WSet>, lb: Boolean): Stri
 }
 
 @Composable
-private fun CalendarView(st: AppState) {
+internal fun CalendarView(st: AppState) {
     val idx = st.idx; val p = LocalPal.current
     val today = ldt(st.now).date
     val (y, mo) = addMonths(today.year, today.monthNumber, st.cm)
@@ -162,7 +222,7 @@ private fun CalendarView(st: AppState) {
 }
 
 @Composable
-private fun MusclesView(st: AppState) {
+internal fun MusclesView(st: AppState) {
     val idx = st.idx; val p = LocalPal.current
     val days = st.mu; val now = st.now; val from = now - days * 86_400_000L; val pf = from - days * 86_400_000L
     val cnt = HashMap<String, Int>(); val pc = HashMap<String, Int>()
@@ -198,7 +258,7 @@ private fun MusclesView(st: AppState) {
 private data class Ag(val n: Int, val t: Long, val v: Double, val s: Int, val p: Int, val d: Int)
 
 @Composable
-private fun ReportView(st: AppState) {
+internal fun ReportView(st: AppState) {
     val idx = st.idx; val lb = LocalLb.current
     val today = ldt(st.now).date
     val a: Long; val b: Long; val pa: Long; val label: String

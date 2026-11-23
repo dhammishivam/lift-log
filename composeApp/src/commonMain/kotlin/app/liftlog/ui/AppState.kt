@@ -13,6 +13,10 @@ import kotlinx.coroutines.launch
 
 enum class Tab { Workout, History, Exercises, Body }
 
+/** Counts from one import, for the summary card on the Hevy guide. */
+data class ImportSummary(val workouts: Int = 0, val measures: Int = 0, val routines: Int = 0, val exercises: Int = 0,
+                         val skipped: Int = 0, val backup: Int = 0, val unknown: List<String> = emptyList())
+
 data class MenuItem(val label: String, val danger: Boolean = false, val on: Boolean = false, val action: () -> Unit)
 data class MenuReq(val title: String?, val msg: String?, val items: List<MenuItem>)
 data class ToastMsg(val text: String, val undo: (() -> Unit)?, val id: Long = nowMs())
@@ -37,6 +41,8 @@ sealed class Screen {
     object Orm : Screen()
     object Coach : Screen()
     object HevyGuide : Screen()
+    /** "cal", "mus" or "rep", opened from the Profile dashboard. */
+    data class Stats(val view: String) : Screen()
     /** Find a program: about you, days a week, suggestions, preview. */
     class Programs(p: Profile?, weight: String, height: String) : Screen() {
         var step by mutableStateOf(0); var gender by mutableStateOf(p?.gender); var height by mutableStateOf(height)
@@ -225,35 +231,52 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         store.putPins(Pins(n = n))
     }
 
-    fun importFiles() = scope.launch {
-        val files = platform.pickTextFiles(); if (files.isEmpty()) return@launch
-        val out = mutableListOf<String>()
+    fun importFiles() = scope.launch { importTexts(platform.pickTextFiles()) }
+
+    /** Files shared or opened into the app (e.g. straight from Hevy's export): import them and show the result on the Hevy guide. */
+    fun importIncoming(files: List<Pair<String, String>>) = scope.launch {
+        if (files.isEmpty()) return@launch
+        if (stack.lastOrNull() != Screen.HevyGuide) { stack.clear(); push(Screen.HevyGuide) }
+        importTexts(files)
+    }
+
+    /** What the last import brought in, for the summary card. */
+    var lastImport by mutableStateOf<ImportSummary?>(null)
+
+    suspend fun importTexts(files: List<Pair<String, String>>) {
+        if (files.isEmpty()) return
+        val out = mutableListOf<String>(); var sum = ImportSummary()
+        importStatus = "Importing…"
         try {
             files.forEach { (name, text) ->
                 val head = text.lineSequence().firstOrNull()?.lowercase() ?: ""
                 when {
                     // A Lift Log backup is one line of JSON that can mention "weight_kg", so check for it first.
                     text.trimStart().startsWith("{") -> {
-                        val docs = parseBackup(text); store.importDocs(docs); out += "${docs.size} items from backup"
+                        val docs = parseBackup(text); store.importDocs(docs); out += "${docs.size} items from backup"; sum = sum.copy(backup = sum.backup + docs.size)
                     }
                     head.contains("exercise_title") -> {
                         importStatus = "Importing workouts…"
                         val r = parseHevyWorkouts(text, idx)
                         if (r.workouts.isEmpty() && r.skipped == 0) { out += "$name: no workouts found"; return@forEach }
+                        sum = sum.copy(skipped = sum.skipped + r.skipped)
                         if (r.workouts.isEmpty()) { out += "no new workouts (${r.skipped} already in Lift Log)"; return@forEach }
                         store.importAll(r.customs, r.workouts, emptyList(), emptyList())
                         val nr = idx.routinesFromHistory().also { rs -> store.importAll(emptyList(), emptyList(), emptyList(), rs) }.size
+                        sum = sum.copy(workouts = sum.workouts + r.workouts.size, exercises = sum.exercises + r.customs.size, routines = sum.routines + nr)
                         out += count(r.workouts.size, "new workout") + (if (r.customs.isNotEmpty()) ", " + count(r.customs.size, "new exercise") else "") +
                             (if (nr > 0) ", " + count(nr, "routine") else "") + (if (r.skipped > 0) " (${r.skipped} already in Lift Log)" else "")
                     }
                     head.contains("weight_kg") || head.contains("waist_in") -> {
                         val all = parseHevyMeasures(text); val ms = newMeasures(all, idx); store.importAll(emptyList(), emptyList(), ms, emptyList())
+                        sum = sum.copy(measures = sum.measures + ms.size, skipped = sum.skipped + (all.size - ms.size))
                         out += count(ms.size, "new measurement entry", "new measurement entries") + (if (all.size > ms.size) " (${all.size - ms.size} already in Lift Log)" else "")
                     }
-                    else -> out += "$name: not a Hevy export or Lift Log backup"
+                    else -> { out += "$name: not a Hevy export or Lift Log backup"; sum = sum.copy(unknown = sum.unknown + name) }
                 }
             }
             importStatus = "Done: ${out.joinToString("; ")}."
+            lastImport = sum
             say("Import finished")
         } catch (e: Throwable) { importStatus = e.message ?: "Import failed." }
     }
