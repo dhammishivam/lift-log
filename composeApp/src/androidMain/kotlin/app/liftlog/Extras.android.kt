@@ -94,7 +94,7 @@ object LiveNotifier {
         }
         if (i.total > 0) b.setProgress(i.total, i.done, false)
         // Android 16: show as a Live Update (status bar chip with the timer).
-        if (Build.VERSION.SDK_INT >= 36) runCatching { b.setRequestPromotedOngoing(true) }
+        if (Build.VERSION.SDK_INT >= 36) b.addExtras(android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
         runCatching { nm.notify(ID, b.build()) }
     }
 }
