@@ -31,7 +31,7 @@ import org.robolectric.annotation.GraphicsMode
 /** Drives the real screens like a user: taps, typing, and what appears. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "w411dp-h731dp-xxhdpi")
+@Config(sdk = [35], qualifiers = "w411dp-h1100dp-xxhdpi")
 class UiFlowsTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
     @get:Rule val timing = object : org.junit.rules.TestWatcher() {
