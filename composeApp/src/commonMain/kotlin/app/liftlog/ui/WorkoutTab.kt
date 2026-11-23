@@ -69,19 +69,17 @@ fun WorkoutTab(st: AppState) {
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Label("Routines", Modifier.weight(1f))
-                Btn("New routine", { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = ""), true)) }, small = true, icon = Ic.plus)
+                if (idx.rs.isNotEmpty()) {
+                    Btn("Programs", { openPrograms(st) }, small = true, icon = Ic.cal); Spacer(Modifier.width(8.dp))
+                    Btn("New routine", { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = ""), true)) }, small = true, icon = Ic.plus)
+                }
             }
         }
         if (idx.rs.isEmpty()) item {
-            Column(Modifier.fillMaxWidth().card(20.dp)) {
-                Txt("No routines yet", weight = FontWeight.SemiBold)
-                Mu("Save the workouts you repeat and start them in one tap.", Modifier.padding(top = 6.dp, bottom = 14.dp), size = 15.sp)
-                FlowRowX {
-                    Btn("Create routine", { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = ""), true)) }, kind = BtnKind.Primary)
-                    if (idx.ws.isNotEmpty()) Btn("Build from my workouts", { val n = st.buildRoutines(); if (n > 0) st.say("$n routines added") })
-                    Btn("Add Push / Pull / Legs", { starterRoutines(st) })
-                }
-            }
+            // Two ways in: a proven program picked for you, or your own routine.
+            StartCard(Ic.trophy, "Use a program", "Answer a few questions and pick a proven plan for your week: full body, upper / lower, push / pull / legs and more.", primary = true) { openPrograms(st) }
+            StartCard(Ic.plus, "Build your own", "Pick exercises, sets and rest times and save it as a routine.") { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = ""), true)) }
+            if (idx.ws.isNotEmpty()) StartCard(Ic.cal, "Build from my workouts", "Turn workouts you've repeated into routines.") { val n = st.buildRoutines(); if (n > 0) st.say(count(n, "routine") + " added") }
         }
         folders.forEach { f ->
             val list = idx.rs.filter { (it.folder ?: "") == f }
@@ -126,16 +124,19 @@ private fun routineMenu(st: AppState, r: Routine) {
     ), if (fs.isEmpty()) "Tip: give a routine a folder name in Edit to group them." else null)
 }
 
-fun starterRoutines(st: AppState) {
-    fun id(n: String) = "b:" + slug(n)
-    fun mk(name: String, list: List<Triple<String, Int, Int>>, c: Int) = Routine(id = "r_" + rid(), name = name, created = nowMs() + c,
-        exercises = list.map { (n, reps, rest) -> ExItem(id(n), "", rest, null, List(3) { WSet(reps = reps.toDouble()) }) })
-    listOf(
-        mk("Push", listOf(Triple("Bench Press (Barbell)", 8, 120), Triple("Overhead Press (Barbell)", 8, 120), Triple("Incline Bench Press (Dumbbell)", 10, 90), Triple("Lateral Raise (Dumbbell)", 12, 60), Triple("Triceps Rope Pushdown", 12, 60)), 0),
-        mk("Pull", listOf(Triple("Deadlift (Barbell)", 5, 180), Triple("Pull Up", 8, 120), Triple("Bent Over Row (Barbell)", 8, 90), Triple("Face Pull", 15, 60), Triple("Bicep Curl (Dumbbell)", 12, 60)), 1),
-        mk("Legs", listOf(Triple("Squat (Barbell)", 6, 180), Triple("Romanian Deadlift (Barbell)", 8, 120), Triple("Leg Press (Machine)", 10, 90), Triple("Lying Leg Curl (Machine)", 12, 60), Triple("Standing Calf Raise (Machine)", 15, 60)), 2),
-    ).forEach { st.store.putRoutine(it) }
-    st.say("Push, Pull and Legs added")
+/** A big tappable choice on the empty Workout tab. */
+@Composable
+private fun StartCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String, primary: Boolean = false, onClick: () -> Unit) {
+    val p = LocalPal.current
+    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(16.dp)).background(if (primary) p.acs else p.s1).clickable(onClick = onClick).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(if (primary) p.ac else p.s2), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(22.dp), tint = if (primary) androidx.compose.ui.graphics.Color.White else p.ac)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) { Txt(title, size = 17.sp, weight = FontWeight.SemiBold); Mu(text, Modifier.padding(top = 2.dp), size = 14.sp) }
+        Icon(Ic.right, null, Modifier.size(20.dp), tint = p.mu)
+    }
 }
 
 @Composable

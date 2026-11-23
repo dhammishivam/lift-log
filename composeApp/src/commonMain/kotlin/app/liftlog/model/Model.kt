@@ -117,6 +117,8 @@ data class Settings(
     val goal: Int? = null,
     /** "dark" (default when null), "light" or "system". */
     val theme: String? = null,
+    /** What the program finder asked: used to suggest programs. Stays on this phone. */
+    val profile: Profile? = null,
     /** Mascot celebrations for records (on unless false). */
     val cele: Boolean? = null,
     /** Steps of the Move from Hevy guide the user has ticked off. */
@@ -124,6 +126,21 @@ data class Settings(
     /** App only: Anthropic API key and model for the coach. Never exported. */
     val apiKey: String? = null,
     val model: String? = null,
+)
+
+/** Answers from "Find a program". Bodyweight goes into measurements instead. */
+@Serializable
+data class Profile(
+    /** male, female or other */
+    val gender: String? = null,
+    val heightCm: Double? = null,
+    /** new, some or exp */
+    val exp: String? = null,
+    /** gym, dumbbell or none */
+    val equip: String? = null,
+    /** muscle, strength or fit */
+    val goal: String? = null,
+    val days: Int? = null,
 )
 
 @Serializable

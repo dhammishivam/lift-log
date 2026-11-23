@@ -100,6 +100,7 @@ private fun ScreenHost(st: AppState, s: Screen) {
         is Screen.Coach -> CoachScreen(st)
         is Screen.PinEditor -> PinEditorScreen(st, s)
         is Screen.HevyGuide -> HevyGuideScreen(st)
+        is Screen.Programs -> ProgramsScreen(st, s)
     }
 }
 

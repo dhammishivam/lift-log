@@ -111,7 +111,13 @@ Rowing Machine|Cardio|Machine|cd
 Elliptical Trainer|Cardio|Machine|cd
 Walking|Cardio|None|cd
 Stair Machine|Cardio|Machine|dur
-Jump Rope|Cardio|Other|dur"""
+Jump Rope|Cardio|Other|dur
+Squat (Bodyweight)|Quads|Bodyweight|bw
+Lunge (Bodyweight)|Quads|Bodyweight|bw
+Pike Push Up|Shoulders|Bodyweight|bw
+Inverted Row|Back|Bodyweight|bw
+Burpee|Full body|Bodyweight|bw
+Mountain Climber|Abs|Bodyweight|bw"""
 
 private const val CUE_TXT = """Bench Press (Barbell)|Shoulder blades pinched and down, feet planted. Lower to mid-chest with elbows about 45° from your sides, then press up and slightly back.
 Bench Press (Dumbbell)|Lower the dumbbells to chest level with elbows about 45° from your sides, then press up until your arms are straight.
@@ -219,6 +225,12 @@ Walking|Brisk pace, upright posture.
 Stair Machine|Stand upright, take full steps, touch the rails lightly.
 Stair Machine (Steps)|Stand upright, take full steps, touch the rails lightly.
 Jump Rope|Small jumps on the balls of the feet, turn the rope from the wrists.
+Squat (Bodyweight)|Feet shoulder-width, arms forward. Sit down and back until thighs are parallel, then stand tall.
+Lunge (Bodyweight)|Step forward, lower the back knee towards the floor, push back up through the front heel.
+Pike Push Up|Hips high in an upside-down V. Lower the top of your head towards the floor between your hands, press back up.
+Inverted Row|Lie under a sturdy table or low bar, body straight. Pull your chest up to it, lower slowly.
+Burpee|Squat down, jump the feet back to a plank, bring them back in and jump up with arms overhead.
+Mountain Climber|From a high plank, drive the knees towards the chest one at a time, quickly, hips level.
 Lat Pulldown - Close Grip (Cable)|Close-grip handle. Lean back slightly, pull to the upper chest with elbows down and in.
 Reverse Grip Lat Pulldown (Cable)|Underhand grip about shoulder-width. Pull to the upper chest, squeeze, control back up.
 Single Arm Lat Pulldown|One handle. Pull your elbow down to your side, full stretch at the top.

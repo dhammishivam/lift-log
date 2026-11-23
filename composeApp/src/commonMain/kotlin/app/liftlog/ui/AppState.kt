@@ -37,6 +37,12 @@ sealed class Screen {
     object Orm : Screen()
     object Coach : Screen()
     object HevyGuide : Screen()
+    /** Find a program: about you, days a week, suggestions, preview. */
+    class Programs(p: Profile?, weight: String, height: String) : Screen() {
+        var step by mutableStateOf(0); var gender by mutableStateOf(p?.gender); var height by mutableStateOf(height)
+        var weight by mutableStateOf(weight); var exp by mutableStateOf(p?.exp); var equip by mutableStateOf(p?.equip); var goal by mutableStateOf(p?.goal)
+        var days by mutableStateOf(p?.days); var pick by mutableStateOf<String?>(null)
+    }
     class PinEditor(val eid: String, t: String) : Screen() { var t by mutableStateOf(t) }
 }
 

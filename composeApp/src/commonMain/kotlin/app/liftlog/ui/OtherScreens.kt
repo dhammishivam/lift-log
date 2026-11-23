@@ -208,6 +208,7 @@ fun SettingsScreenView(st: AppState) {
             BoxCard("Move from Hevy", if (hd == 0) "Bring your workouts, measurements and routines over from Hevy, step by step." else "$hd of $ht steps done.") {
                 Btn(if (hd == 0) "Start" else if (hd == ht) "Review" else "Continue", { st.push(Screen.HevyGuide) }, kind = if (hd < ht) BtnKind.Primary else BtnKind.Plain)
             }
+            BoxCard("Programs", "Find a proven program for the days you can train, or update your answers.") { Btn("Find a program", { openPrograms(st) }, icon = Ic.cal) }
             BoxCard("Theme", "Dark is the default. System follows your phone's setting.") {
                 Seg(listOf("dark" to "Dark", "light" to "Light", "system" to "System"), set.theme ?: "dark", { t -> st.setSettings { it.copy(theme = t) } })
             }

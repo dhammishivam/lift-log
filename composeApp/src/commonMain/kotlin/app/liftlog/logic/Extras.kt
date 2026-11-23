@@ -142,12 +142,14 @@ fun widgetNumbers(weeks: Collection<Long>, recent: List<Pair<Long, Long>>, now: 
     return WidgetNumbers(mine.size, mine.sumOf { it.second } / 60_000, streak)
 }
 
-/** The routine to suggest next: the one after the last routine you did, in your list order. */
+/** The routine to suggest next: the one after the last routine you did, within its folder (a program's days rotate). */
 fun nextRoutine(idx: Index): Routine? {
     if (idx.rs.isEmpty()) return null
     val last = idx.ws.firstOrNull { it.routineId != null && idx.data.routines[it.routineId] != null }?.routineId ?: return idx.rs.first()
-    val i = idx.rs.indexOfFirst { it.id == last }
-    return idx.rs[(i + 1) % idx.rs.size]
+    val f = idx.data.routines[last]?.folder
+    val group = idx.rs.filter { it.folder == f }
+    val i = group.indexOfFirst { it.id == last }
+    return group[(i + 1) % group.size]
 }
 
 fun widgetInfo(idx: Index, now: Long): WidgetInfo {
