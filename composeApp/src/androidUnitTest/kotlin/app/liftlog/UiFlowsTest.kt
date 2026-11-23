@@ -45,18 +45,19 @@ class UiFlowsTest {
 
     private fun launch(seed: Seed = Seed()): FakePlatform {
         val p = FakePlatform(seed.rows)
+        val t0 = System.currentTimeMillis()
         rule.mainClock.autoAdvance = false // the app's clock ticks forever, so the UI never idles
         rule.setContent { App(p) }
-        // Wait for the database to load: the tab bar appears with the data.
-        for (i in 0 until 300) { if (has("Exercises")) break; pump(100) }
-        check(has("Exercises")) { "the app never finished loading" }
+        // Wait for the database to load: the tab bar appears with the data. The first test in a JVM
+        // pays for Robolectric's and Skia's cold start, so this waits on wall-clock time, not frames.
+        while (!has("Exercises") && System.currentTimeMillis() - t0 < 120_000) { rule.mainClock.advanceTimeBy(50); Thread.sleep(50) }
+        launchMs = System.currentTimeMillis() - t0
+        check(has("Exercises")) { "the app never finished loading ($launchMs ms)" }
+        deadline = System.currentTimeMillis() + 90_000
         pump(300)
         return p
     }
-    /** A stuck test fails with a stack trace instead of hanging the build. (JUnit's Timeout rule
-     *  moves the test off the main thread, which Robolectric refuses, so the limit is checked here.) */
-    private val deadline = System.currentTimeMillis() + 90_000
-    private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { check(System.currentTimeMillis() < deadline) { "test took over 90 s" }; rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
+    private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { check(System.currentTimeMillis() < deadline) { "test took over 90 s after launch (launch took $launchMs ms)" }; rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
     private fun nodes(text: String, sub: Boolean = false) = rule.onAllNodesWithText(text, substring = sub, useUnmergedTree = true)
     private fun has(text: String, sub: Boolean = false) = nodes(text, sub).fetchSemanticsNodes().isNotEmpty()
     private fun see(text: String, sub: Boolean = false) {
