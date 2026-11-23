@@ -168,7 +168,12 @@ class AppStateTest {
 
     /* ---------- finishing ---------- */
 
-    private fun finish(st: app.liftlog.ui.AppState): Screen.Finish { openFinish(st); return st.stack.last() as Screen.Finish }
+    /** Finish, answering "Finish anyway" when some sets were left unticked. */
+    private fun finish(st: app.liftlog.ui.AppState): Screen.Finish {
+        openFinish(st)
+        st.menu?.let { m -> assertTrue(m.title!!.endsWith("not ticked")); st.menu = null; m.items.single().action() }
+        return st.stack.last() as Screen.Finish
+    }
 
     @Test fun finishingNeedsATickedSet() {
         val (st, _) = loadedState(Seed().routine(push))
