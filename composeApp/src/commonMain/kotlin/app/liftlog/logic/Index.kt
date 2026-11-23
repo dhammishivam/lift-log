@@ -48,7 +48,7 @@ class Index(val data: Data) {
                 if (best != null) keys.forEach { k -> if (at[k]!! >= 0 && mx[k]!! > (best[k] ?: 0.0) + 1e-9) marks.getOrPut("$ei:${at[k]}") { mutableListOf() }.add(k) }
                 run[it.eid] = if (best != null) keys.associateWith { k -> max(best[k] ?: 0.0, mx[k]!!) } else mx
             }
-            pr[w.id] = PrMarks(marks.size, marks)
+            pr[w.id] = PrMarks(marks.values.sumOf { it.size }, marks) // n counts records (a set can set several)
         }
         hh.values.forEach { it.reverse() }
         h = hh; prm = pr

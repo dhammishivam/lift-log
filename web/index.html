@@ -635,7 +635,7 @@ function index(){
       (it.sets||[]).forEach((s,si)=>{if(s.t==='w')return;const m=setM(s);keys.forEach(k=>{if(m[k]>mx[k]){mx[k]=m[k];at[k]=si}})});
       if(best)keys.forEach(k=>{if(at[k]>=0&&mx[k]>best[k]+1e-9){const key=ei+':'+at[k];(pm.m[key]||(pm.m[key]=[])).push(k)}});
       run[it.eid]=best?Object.fromEntries(keys.map(k=>[k,Math.max(best[k],mx[k])])):mx});
-    pm.n=Object.keys(pm.m).length});
+    pm.n=Object.values(pm.m).reduce((q,a)=>q+a.length,0)});
   Object.values(H).forEach(a=>a.reverse());
 }
 const prevSets=(eid,start,excl)=>((H[eid]||[]).find(e=>e.start<start&&e.wid!==excl)||{}).sets||null;
@@ -829,7 +829,7 @@ const fromTemplate=(title,routineId,exs)=>({kind:'active',id:'w_'+rid(),start:Da
 const defTitle=()=>{const h=new Date().getHours();return h<12?'Morning workout':h<17?'Afternoon workout':'Evening workout'};
 
 /* ---------- finish ---------- */
-R.fin=st=>{const m=A,s=liveStats(m);let inc=0,pr=0;m.exercises.forEach(it=>it.sets.forEach(x=>{if(!x.done)inc++;if(x.done&&x.pr)pr++}));const r=m.routineId&&S.docs[m.routineId];
+R.fin=st=>{const m=A,s=liveStats(m);let inc=0,pr=0;m.exercises.forEach(it=>it.sets.forEach(x=>{if(!x.done)inc++;if(x.done&&x.pr)pr+=x.pr.length}));const r=m.routineId&&S.docs[m.routineId];
   return`<div class="hd"><button class="ib" data-a="close" aria-label="Back">${I.left}</button><h2>Save workout</h2><button class="btn pri sm" data-a="fsave">Save</button></div>
   <div class="bd"><input class="titlein" data-f="ftitle" value="${esc(st.title)}" aria-label="Workout title">
   <div class="stats s4"><div><small>Duration</small><b>${dur(st.min*60000)}</b></div><div><small>Volume</small><b>${Wv(s.vol)}</b></div><div><small>Sets</small><b>${s.sets}</b></div><div><small>Records</small><b>${pr}</b></div></div>

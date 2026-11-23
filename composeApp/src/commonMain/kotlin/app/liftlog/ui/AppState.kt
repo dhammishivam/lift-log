@@ -128,9 +128,12 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
     }
 
     /* ---------- notification and widget ---------- */
+    /** The set after the last one ticked (or the first unticked set if everything after it is done). */
     private fun nextSet(a: Active): Pair<Int, Int>? {
-        a.exercises.forEachIndexed { ei, e -> e.sets.forEachIndexed { si, s -> if (s.done != true) return ei to si } }
-        return null
+        val flat = a.exercises.flatMapIndexed { ei, e -> e.sets.indices.map { ei to it } }
+        fun done(p: Pair<Int, Int>) = a.exercises[p.first].sets[p.second].done == true
+        val last = flat.indexOfLast { done(it) }
+        return flat.drop(last + 1).firstOrNull { !done(it) } ?: flat.firstOrNull { !done(it) }
     }
 
     /** What the ongoing notification shows, or null when no new workout is running. */
@@ -144,7 +147,8 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
             var q = it.sets[si]
             T.f.forEach { f -> if (fieldVal(q, f, lb) == null) parseNum(phv(it, si, f, pv, sg, lb))?.let { v -> q = withField(q, f, v, lb) } }
             val vals = if (T.f.any { f -> fieldVal(q, f, lb) != null }) " · " + fmtSet(x.type, q, lb) else ""
-            "${x.name} · set ${setLabel(it.sets, si)}$vals"
+            val lab = when (it.sets[si].t) { "w" -> "warm-up"; "d" -> "drop set"; "f" -> "failure set"; else -> "set ${setLabel(it.sets, si)}" }
+            "${x.name} · $lab$vals"
         }
         return LiveInfo(a.title?.ifBlank { null } ?: defTitle(), a.start, restEnd.takeIf { it > 0 }, next, done, total)
     }

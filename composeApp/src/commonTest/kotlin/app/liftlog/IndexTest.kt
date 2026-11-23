@@ -20,6 +20,7 @@ class IndexTest {
         ))
         assertEquals(0, idx.prm["w1"]!!.n)               // first session sets the baseline
         assertEquals(listOf("w", "orm"), idx.prm["w2"]!!.m["0:1"]) // heavier and a better 1RM, not more volume
+        assertEquals(2, idx.prm["w2"]!!.n)               // counts records, not sets
         assertEquals(0, idx.prm["w3"]!!.n)
     }
 

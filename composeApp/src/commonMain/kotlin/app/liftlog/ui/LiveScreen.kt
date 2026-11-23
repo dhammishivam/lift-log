@@ -316,7 +316,7 @@ fun FinishScreen(st: AppState, f: Screen.Finish) {
     val a = st.data.active ?: return
     val idx = st.idx; val lb = LocalLb.current; val p = LocalPal.current
     val (vol, sets) = idx.liveStats(a)
-    val prs = a.exercises.indices.sumOf { idx.livePrs(a, it).size }
+    val prs = a.exercises.indices.sumOf { ei -> idx.livePrs(a, ei).values.sumOf { it.size } }
     val inc = a.exercises.sumOf { e -> e.sets.count { it.done != true } }
     val r = a.routineId?.let { st.data.routines[it] }
     var whenText by remember { mutableStateOf(ldt(f.whenMs).let { d -> "${d.date} ${d.hour.toString().padStart(2, '0')}:${d.minute.toString().padStart(2, '0')}" }) }
