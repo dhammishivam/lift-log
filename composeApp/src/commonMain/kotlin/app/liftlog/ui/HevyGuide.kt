@@ -30,10 +30,16 @@ private fun steps(st: AppState): List<Step> {
             if (st.platform.receivesShares)
                 "In Hevy: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts and pick Lift Log in the list that opens: the import starts by itself and you'll land back here. Then do the same for Export Measurements. If Hevy saves the file instead, open it from Files or Downloads with Lift Log, or use Choose files below."
             else "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this browser can reach them. Do this before your Hevy subscription ends."),
+        // Done only once both files are in: workouts and measurements. If someone never logged measurements in Hevy,
+        // they can mark it done themselves.
         Step("import", "Import both files here",
-            if (hevyWorkouts > 0) "${count(hevyWorkouts, "Hevy workout")} and ${count(idx.ms.size, "measurement entry", "measurement entries")} are in Lift Log. Importing the same file again won't create duplicates."
-            else "Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.",
-            auto = hevyWorkouts > 0, autoOnly = true),
+            when {
+                hevyWorkouts > 0 && idx.ms.isNotEmpty() -> "${count(hevyWorkouts, "Hevy workout")} and ${count(idx.ms.size, "measurement entry", "measurement entries")} are in Lift Log. Importing the same file again won't create duplicates."
+                hevyWorkouts > 0 -> "Workouts are in (${count(hevyWorkouts, "Hevy workout")}). Now import the measurements file. If you never logged measurements in Hevy, mark this step as done."
+                idx.ms.isNotEmpty() -> "Measurements are in (${count(idx.ms.size, "entry", "entries")}). Now import the workouts file."
+                else -> "Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history."
+            },
+            auto = hevyWorkouts > 0 && idx.ms.isNotEmpty(), autoOnly = hevyWorkouts == 0),
         Step("units", "Check your units",
             "Hevy's export is always in kg. Lift Log converts on screen, so pick what you lift in."),
         Step("routines", "Get your routines back",
