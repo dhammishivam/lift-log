@@ -53,8 +53,8 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
                         val marks = pm.m["$ei:$si"]
                         Row(Modifier.fillMaxWidth().padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).background(if (si % 2 == 0) p.s1 else Color.Transparent).padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Txt(setLabel(it2.sets, si), Modifier.width(32.dp), size = 16.sp, weight = FontWeight.Bold, color = when (set.t) { "w" -> p.wu; "d" -> p.dr; "f" -> p.fa; else -> p.mu })
-                            Txt(fmtSet(x.type, set, lb), Modifier.weight(1f), size = 16.sp)
-                            if (marks != null) { Icon(Ic.trophy, null, Modifier.size(15.dp), tint = p.pr); Txt(" " + marks.joinToString(", ") { PRL[it] ?: it }, size = 13.sp, weight = FontWeight.SemiBold, color = p.pr, maxLines = 1) }
+                            Txt(fmtSet(x.type, set, lb), Modifier.weight(1f), size = 16.sp, maxLines = 1)
+                            if (marks != null) { Icon(Ic.trophy, null, Modifier.size(15.dp), tint = p.pr); Txt(" " + marks.joinToString(" · ") { PRS[it] ?: it }, size = 13.sp, weight = FontWeight.SemiBold, color = p.pr, maxLines = 1) }
                         }
                     }
                 }

@@ -253,6 +253,8 @@ val TYPES: Map<String, TypeDef> = linkedMapOf(
 fun typeOf(t: String): TypeDef = TYPES[t] ?: TYPES.getValue("wr")
 
 val PRKEYS = mapOf("wr" to listOf("w", "orm", "vol"), "wbw" to listOf("w", "orm", "vol"), "bw" to listOf("reps"), "dur" to listOf("sec"), "cd" to listOf("km"))
+/** Short record names for tight rows. */
+val PRS = mapOf("w" to "Weight", "orm" to "1RM", "vol" to "Volume", "reps" to "Reps", "sec" to "Time", "km" to "Distance")
 val PRL = mapOf("w" to "Heaviest weight", "orm" to "Best 1RM", "vol" to "Best set volume", "reps" to "Most reps", "sec" to "Longest time", "km" to "Longest distance")
 val RESTS = listOf(0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300)
 val SET_TYPES = linkedMapOf("n" to "Normal", "w" to "Warm-up", "d" to "Drop set", "f" to "Failure")
