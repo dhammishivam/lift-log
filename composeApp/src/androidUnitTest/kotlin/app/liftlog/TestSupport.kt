@@ -21,6 +21,7 @@ class FakePlatform(private val seed: List<Triple<String, String, String>> = empt
     override val name = "Android"
     override val appVersion = "1.0.0 (test)"
     override val coachEnabled = false
+    override val dbDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Unconfined
     val opened = mutableListOf<String>()
     /** Files the next import "picks" (name to contents). */
     var filesToPick: List<Pair<String, String>> = emptyList()

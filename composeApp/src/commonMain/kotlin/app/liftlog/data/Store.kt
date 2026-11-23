@@ -7,7 +7,6 @@ import app.liftlog.db.LiftDb
 import app.liftlog.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -22,7 +21,7 @@ import kotlinx.serialization.json.JsonElement
 class Store(platform: Platform, private val scope: CoroutineScope) {
     private val db = LiftDb(platform.sqlDriver())
     /** One writer at a time keeps writes to the same document in order. */
-    private val io = Dispatchers.Default.limitedParallelism(1)
+    private val io = platform.dbDispatcher
     var data by mutableStateOf(Data())
         private set
     var loaded by mutableStateOf(false)
