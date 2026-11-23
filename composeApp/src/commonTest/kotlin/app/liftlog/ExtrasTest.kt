@@ -79,4 +79,14 @@ class ExtrasTest {
         assertEquals("r1", nextRoutine(Index(data(wrap, routines = rs)))?.id)
         assertNull(nextRoutine(Index(data())))
     }
+
+    @Test fun previousSetsLineUpByKind() {
+        val prev = listOf(set(20.0, 10.0, t = "w"), set(60.0, 8.0), set(60.0, 7.0))
+        val now = listOf(set(null, null, t = "w"), set(null, null, t = "w"), set(null, null), set(null, null))
+        assertEquals(20.0, prevFor(prev, now, 0)?.kg)
+        assertNull(prevFor(prev, now, 1), "last session had one warm-up")
+        assertEquals(8.0, prevFor(prev, now, 2)?.reps)
+        assertEquals(7.0, prevFor(prev, now, 3)?.reps)
+        assertNull(prevFor(null, now, 0))
+    }
 }

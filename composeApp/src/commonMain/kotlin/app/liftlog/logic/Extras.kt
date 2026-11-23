@@ -35,6 +35,16 @@ fun mFmt(k: String, v: Double, lb: Boolean): String {
     return if (u == "%") "$n%" else "$n $u"
 }
 
+/* ---------- last session's set for each row ---------- */
+
+/** Warm-ups line up with last session's warm-ups and working sets with working sets, each by position. */
+fun prevFor(prev: List<WSet>?, sets: List<WSet>, si: Int): WSet? {
+    if (prev == null) return null
+    val s = sets.getOrNull(si) ?: return null
+    val w = s.t == "w"; val k = sets.take(si).count { (it.t == "w") == w }
+    return prev.filter { (it.t == "w") == w }.getOrNull(k)
+}
+
 /* ---------- warm-up sets ---------- */
 
 /**

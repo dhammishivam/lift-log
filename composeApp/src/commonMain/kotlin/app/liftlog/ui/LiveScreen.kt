@@ -36,8 +36,10 @@ fun phv(item: ExItem, si: Int, f: String, pv: WSet?, sg: Sug?, lb: Boolean): Str
     val s = item.sets[si]
     fieldVal(valsAsSet(s.p), f, lb)?.let { return plainN(it) }
     fieldVal(pv, f, lb)?.let { return plainN(it) }
-    if (si > 0) { fieldVal(item.sets[si - 1], f, lb)?.let { return plainN(it) }; return phv(item, si - 1, f, null, null, lb) }
-    return ""
+    // Otherwise the nearest set above of the same kind (a warm-up never hints a working set).
+    val j = (si - 1 downTo 0).firstOrNull { (item.sets[it].t == "w") == (s.t == "w") } ?: return ""
+    fieldVal(item.sets[j], f, lb)?.let { return plainN(it) }
+    return phv(item, j, f, null, null, lb)
 }
 
 @Composable
@@ -142,7 +144,7 @@ fun ExerciseCard(st: AppState, ctx: CardCtx, ei: Int, ssi: Pair<Char, Long>?) {
         }
         it.sets.forEachIndexed { si, s ->
             val done = live && s.done == true
-            val pv = prev?.getOrNull(si)
+            val pv = prevFor(prev, it.sets, si)
             val run = st.timer?.let { t -> live && t.ei == ei && t.si == si } == true
             Row(
                 Modifier.fillMaxWidth().padding(top = 2.dp).clip(RoundedCornerShape(10.dp)).background(if (done) p.oks else Color.Transparent).padding(horizontal = 4.dp, vertical = 3.dp),
@@ -199,7 +201,7 @@ fun checkSet(st: AppState, ei: Int, si: Int) {
     val T = typeOf(idx.exOf(it.eid).type)
     val ns: WSet
     if (s.done != true) {
-        val pv = idx.prevSets(it.eid, a.start, a.editId)?.getOrNull(si); val sg = idx.sugFor(a, ei, si)
+        val pv = prevFor(idx.prevSets(it.eid, a.start, a.editId), it.sets, si); val sg = idx.sugFor(a, ei, si)
         var q = s
         T.f.forEach { f -> if (fieldVal(q, f, lb) == null) parseNum(phv(it, si, f, pv, sg, lb))?.let { v -> q = withField(q, f, v, lb) } }
         if (T.f.all { f -> fieldVal(q, f, lb) == null }) { st.say("Enter a value first"); return }
@@ -227,7 +229,7 @@ private fun toggleTimer(st: AppState, ei: Int, si: Int) {
     if (t != null) st.finishTimer(false)
     val a = st.data.active ?: return; val it = a.exercises[ei]; val s = it.sets[si]
     if (s.done == true) { st.say("Untick the set to time it again"); return }
-    val pv = st.idx.prevSets(it.eid, a.start, a.editId)?.getOrNull(si)
+    val pv = prevFor(st.idx.prevSets(it.eid, a.start, a.editId), it.sets, si)
     val tgt = s.sec ?: parseNum(phv(it, si, "sec", pv, null, st.lb)) ?: 0.0
     st.timer = SetTimer(ei, si, nowMs(), tgt)
 }
@@ -280,7 +282,7 @@ private fun exerciseMenu(st: AppState, ctx: CardCtx, ei: Int) {
 private fun workWeight(st: AppState, ctx: CardCtx, ei: Int): Double? {
     val it = ctx.items.getOrNull(ei) ?: return null; val lb = st.lb
     val si0 = it.sets.indexOfFirst { s -> s.t != "w" }.coerceAtLeast(0); val s = it.sets.getOrNull(si0) ?: return null
-    val pv = st.idx.prevSets(it.eid, ctx.start, ctx.editId)?.getOrNull(si0)
+    val pv = prevFor(st.idx.prevSets(it.eid, ctx.start, ctx.editId), it.sets, si0)
     val sg = if (ctx.live && ctx.active != null) st.idx.sugFor(ctx.active, ei, si0) else null
     return fieldVal(s, "kg", lb) ?: parseNum(phv(it, si0, "kg", pv, sg, lb))
 }

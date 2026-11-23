@@ -138,7 +138,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         val total = a.exercises.sumOf { it.sets.size }; val done = a.exercises.sumOf { e -> e.sets.count { it.done == true } }
         val next = nextSet(a)?.let { (ei, si) ->
             val it = a.exercises[ei]; val x = idx.exOf(it.eid); val T = typeOf(x.type)
-            val pv = idx.prevSets(it.eid, a.start, a.editId)?.getOrNull(si); val sg = idx.sugFor(a, ei, si)
+            val pv = prevFor(idx.prevSets(it.eid, a.start, a.editId), it.sets, si); val sg = idx.sugFor(a, ei, si)
             var q = it.sets[si]
             T.f.forEach { f -> if (fieldVal(q, f, lb) == null) parseNum(phv(it, si, f, pv, sg, lb))?.let { v -> q = withField(q, f, v, lb) } }
             val vals = if (T.f.any { f -> fieldVal(q, f, lb) != null }) " · " + fmtSet(x.type, q, lb) else ""
