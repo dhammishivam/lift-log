@@ -9,6 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,8 +60,8 @@ fun StatsScreen(st: AppState, s: Screen.Stats) {
 private fun ProfileHeader(st: AppState) {
     val p = LocalPal.current; val lb = LocalLb.current
     val name = st.data.settings.name.orEmpty()
-    var edit by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var draft by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(name) }
+    var edit by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf(name) }
     val ps = profileStats(st.idx)
     Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
