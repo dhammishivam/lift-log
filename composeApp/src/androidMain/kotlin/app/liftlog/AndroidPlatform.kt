@@ -167,7 +167,11 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
 
     override val receivesShares: Boolean get() = true
 
-    override fun openApp(pkg: String): Boolean {
+    override fun openApp(pkg: String, link: String?): Boolean {
+        // A deep link first (it lands closer to the right screen), then the app's normal start screen.
+        if (link != null && runCatching {
+                act.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link)).setPackage(pkg)); true
+            }.getOrDefault(false)) return true
         val i = act.packageManager.getLaunchIntentForPackage(pkg) ?: return false
         return runCatching { act.startActivity(i); true }.getOrDefault(false)
     }

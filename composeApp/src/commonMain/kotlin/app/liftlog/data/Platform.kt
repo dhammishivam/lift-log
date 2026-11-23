@@ -65,8 +65,8 @@ interface Platform {
     fun shareCard(card: ShareCard): Boolean = false
     /** Other apps can hand their exports straight to Lift Log (Android's share and open-with). */
     val receivesShares: Boolean get() = false
-    /** Opens another installed app, e.g. Hevy to export from. False if it isn't installed or this can't be done here. */
-    fun openApp(pkg: String): Boolean = false
+    /** Opens another installed app, e.g. Hevy to export from, at [link] if given. False if it isn't installed or this can't be done here. */
+    fun openApp(pkg: String, link: String? = null): Boolean = false
 }
 
 /** Keeps the screen awake while shown. */
@@ -86,6 +86,6 @@ object Incoming {
     val files = kotlinx.coroutines.flow.MutableStateFlow<List<Pair<String, String>>>(emptyList())
     /** True from the moment a share arrives until its files are read, so the app can show the import screen at once. */
     val busy = kotlinx.coroutines.flow.MutableStateFlow(false)
-    fun offer(f: List<Pair<String, String>>) { if (f.isNotEmpty()) files.value = files.value + f; println("LiftLogImport: offered ${f.size}, waiting ${files.value.size}") }
+    fun offer(f: List<Pair<String, String>>) { if (f.isNotEmpty()) files.value = files.value + f }
     fun take(): List<Pair<String, String>> = files.value.also { files.value = emptyList() }
 }

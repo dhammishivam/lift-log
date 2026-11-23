@@ -28,7 +28,7 @@ private fun steps(st: AppState): List<Step> {
     return listOf(
         Step("export", "Export your data from Hevy",
             if (st.platform.receivesShares)
-                "In Hevy: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts and pick Lift Log in the list that opens: the import starts by itself and you'll land back here. Then do the same for Export Measurements. If Hevy saves the file instead, open it from Files or Downloads with Lift Log, or use Choose files below."
+                "Open Hevy opens your Hevy profile. Tap the gear icon → Export & Import Data → Export Data. Tap Export Workouts and pick Lift Log in the list that opens: the import starts by itself and you'll land back here. Then do the same for Export Measurements. If Hevy saves the file instead, open it from Files or Downloads with Lift Log, or use Choose files below."
             else "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this browser can reach them. Do this before your Hevy subscription ends."),
         // Done only once both files are in: workouts and measurements. If someone never logged measurements in Hevy,
         // they can mark it done themselves.
@@ -77,7 +77,7 @@ fun HevyGuideScreen(st: AppState) {
             all.forEachIndexed { i, s ->
                 StepCard(i + 1, s, isDone(s)) {
                     when (s.id) {
-                        "export" -> if (st.platform.receivesShares) Btn("Open Hevy", { if (!st.platform.openApp("com.hevy")) st.say("Hevy isn't installed on this phone") }, kind = if (isDone(s)) BtnKind.Plain else BtnKind.Primary)
+                        "export" -> if (st.platform.receivesShares) Btn("Open Hevy", { if (!st.platform.openApp("com.hevy", "hevy://tab/profile")) st.say("Hevy isn't installed on this phone") }, kind = if (isDone(s)) BtnKind.Plain else BtnKind.Primary)
                         "import" -> {
                             Btn("Choose files", { st.importFiles() }, kind = if (s.auto) BtnKind.Plain else BtnKind.Primary)
                             if (st.importStatus.isNotEmpty()) Mu(st.importStatus, Modifier.padding(top = 8.dp))

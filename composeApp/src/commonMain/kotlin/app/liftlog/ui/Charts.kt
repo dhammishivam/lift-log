@@ -1,6 +1,7 @@
 package app.liftlog.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -79,36 +80,39 @@ fun LineChart(series: List<Series>, modifier: Modifier = Modifier.fillMaxWidth()
 }
 
 /* ---------- body heat map: an original simple figure, front and back ---------- */
-private sealed class Sh { data class E(val cx: Float, val cy: Float, val rx: Float, val ry: Float) : Sh(); data class R(val x: Float, val y: Float, val w: Float, val h: Float, val r: Float) : Sh() }
-private fun e(cx: Number, cy: Number, rx: Number, ry: Number) = Sh.E(cx.toFloat(), cy.toFloat(), rx.toFloat(), ry.toFloat())
-private fun r(x: Number, y: Number, w: Number, h: Number, rr: Number) = Sh.R(x.toFloat(), y.toFloat(), w.toFloat(), h.toFloat(), rr.toFloat())
-private val SIL = listOf(Sh.E(100f, 34f, 20f, 20f), r(90, 50, 20, 18, 5), r(64, 64, 72, 122, 26), r(70, 168, 60, 46, 18), r(38, 72, 24, 80, 12), r(138, 72, 24, 80, 12),
-    r(34, 142, 22, 70, 11), r(144, 142, 22, 70, 11), r(70, 200, 28, 186, 14), r(102, 200, 28, 186, 14))
-private val FRONT = listOf("Shoulders" to listOf(e(60, 84, 14, 13), e(140, 84, 14, 13)), "Chest" to listOf(e(84, 99, 18, 14), e(116, 99, 18, 14)),
-    "Biceps" to listOf(e(50, 119, 10, 23), e(150, 119, 10, 23)), "Forearms" to listOf(e(45, 176, 9, 27), e(155, 176, 9, 27)), "Abs" to listOf(r(88, 117, 24, 62, 9)),
-    "Quads" to listOf(e(84, 258, 13, 44), e(116, 258, 13, 44)), "Adductors" to listOf(e(94, 232, 4.5, 20), e(106, 232, 4.5, 20)), "Calves" to listOf(e(84, 332, 9, 28), e(116, 332, 9, 28)))
-private val BACK = listOf("Traps" to listOf(e(100, 74, 25, 12)), "Shoulders" to listOf(e(60, 86, 13, 12), e(140, 86, 13, 12)),
-    "Back" to listOf(e(82, 118, 16, 30), e(118, 118, 16, 30), r(92, 140, 16, 36, 6)), "Triceps" to listOf(e(50, 117, 10, 23), e(150, 117, 10, 23)),
-    "Forearms" to listOf(e(45, 176, 9, 27), e(155, 176, 9, 27)), "Glutes" to listOf(e(86, 198, 15, 16), e(114, 198, 15, 16)),
-    "Hamstrings" to listOf(e(84, 258, 12, 40), e(116, 258, 12, 40)), "Calves" to listOf(e(84, 328, 11, 28), e(116, 328, 11, 28)))
+/** Parsed body map paths (in a 200 × 420 box), built once. */
+private val SIL_P by lazy { BodyPaths.sil.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } }
+private val FRONT_P by lazy { BodyPaths.front.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
+private val BACK_P by lazy { BodyPaths.back.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
 
+/** Heat colour for a muscle: untrained muscles stay quiet, trained ones go from a pale to the full accent. */
 @Composable
-fun BodyMap(cnt: Map<String, Int>, maxWidth: androidx.compose.ui.unit.Dp = 340.dp, legend: Boolean = true) {
+fun muscleColor(v: Int, mx: Int): Color {
+    val p = LocalPal.current
+    return if (v <= 0) lerp(p.s2, p.ink, 0.14f) else lerp(lerp(p.s2, p.ac, 0.35f), p.ac, (v.toFloat() / maxOf(1, mx)).coerceIn(0f, 1f))
+}
+
+/** Front and back anatomy with each muscle shaded by how many sets it got. [sel] outlines one muscle. */
+@Composable
+fun BodyMap(cnt: Map<String, Int>, maxWidth: androidx.compose.ui.unit.Dp = 340.dp, legend: Boolean = true, sel: String? = null) {
     val p = LocalPal.current
     val mx = maxOf(1, cnt.values.maxOrNull() ?: 0)
-    fun fill(m: String): Color { val v = cnt[m] ?: 0; return if (v == 0) p.s2 else lerp(p.s2, p.ac, 0.25f + 0.75f * v / mx) }
+    val cols = (BodyPaths.front.keys + BodyPaths.back.keys).associateWith { m -> muscleColor(cnt[m] ?: 0, mx) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Row(Modifier.widthIn(max = maxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Front" to FRONT, "Back" to BACK).forEach { (label, parts) ->
+        Row(Modifier.widthIn(max = maxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf("Front" to FRONT_P, "Back" to BACK_P).forEach { (label, parts) ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Canvas(Modifier.fillMaxWidth().aspectRatio(156f / 384f)) {
-                        val k = size.width / 156f
-                        fun DrawScope.shape(s: Sh, c: Color) = when (s) {
-                            is Sh.E -> drawOval(c, Offset((s.cx - s.rx - 22) * k, (s.cy - s.ry - 8) * k), Size(2 * s.rx * k, 2 * s.ry * k))
-                            is Sh.R -> drawRoundRect(c, Offset((s.x - 22) * k, (s.y - 8) * k), Size(s.w * k, s.h * k), CornerRadius(s.r * k))
+                    Canvas(Modifier.fillMaxWidth().aspectRatio(200f / 420f)) {
+                        val k = size.width / 200f
+                        scale(k, k, pivot = Offset.Zero) {
+                            SIL_P.forEach { drawPath(it, p.s2) }
+                            parts.forEach { (m, paths) ->
+                                paths.forEach { path ->
+                                    drawPath(path, cols.getValue(m))
+                                    drawPath(path, if (m == sel) p.ink else p.bg, style = androidx.compose.ui.graphics.drawscope.Stroke(width = if (m == sel) 2.2f else 0.9f))
+                                }
+                            }
                         }
-                        SIL.forEach { shape(it, p.s1) }
-                        parts.forEach { (m, shapes) -> shapes.forEach { shape(it, fill(m)) } }
                     }
                     Mu(label, size = 13.sp)
                 }
@@ -116,8 +120,32 @@ fun BodyMap(cnt: Map<String, Int>, maxWidth: androidx.compose.ui.unit.Dp = 340.d
         }
         if (legend) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Mu("Fewer sets", size = 13.sp); Spacer(Modifier.width(8.dp))
-            Canvas(Modifier.width(90.dp).height(8.dp)) { drawRoundRect(Brush.horizontalGradient(listOf(p.s2, p.ac)), cornerRadius = CornerRadius(4.dp.toPx())) }
+            Canvas(Modifier.width(90.dp).height(8.dp)) { drawRoundRect(Brush.horizontalGradient(listOf(lerp(p.s2, p.ac, 0.35f), p.ac)), cornerRadius = CornerRadius(4.dp.toPx())) }
             Spacer(Modifier.width(8.dp)); Mu("More", size = 13.sp)
+        }
+    }
+}
+
+/** Training balance across the six main groups: this period filled, the one before as an outline. */
+@Composable
+fun BalanceRadar(cur: Map<String, Int>, prev: Map<String, Int>, modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    val axes = listOf("Back", "Chest", "Core", "Shoulders", "Arms", "Legs")
+    val mx = maxOf(1, axes.maxOf { maxOf(cur[it] ?: 0, prev[it] ?: 0) }).toFloat()
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val style = androidx.compose.ui.text.TextStyle(color = p.mu, fontSize = 12.sp)
+    Canvas(modifier.fillMaxWidth().aspectRatio(1.25f)) {
+        val c = Offset(size.width / 2, size.height / 2 + 4.dp.toPx()); val r = minOf(size.width, size.height) * 0.36f
+        fun pt(i: Int, f: Float): Offset { val a = (-90.0 + 60.0 * i) * kotlin.math.PI / 180; return Offset(c.x + (r * f * kotlin.math.cos(a)).toFloat(), c.y + (r * f * kotlin.math.sin(a)).toFloat()) }
+        fun poly(f: (Int) -> Float) = androidx.compose.ui.graphics.Path().apply { axes.indices.forEach { i -> val q = pt(i, f(i)); if (i == 0) moveTo(q.x, q.y) else lineTo(q.x, q.y) }; close() }
+        listOf(0.25f, 0.5f, 0.75f, 1f).forEach { g -> drawPath(poly { g }, p.ln, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
+        axes.indices.forEach { i -> drawLine(p.ln, c, pt(i, 1f), 1.dp.toPx()) }
+        drawPath(poly { (prev[axes[it]] ?: 0) / mx }, p.mu, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 6f))))
+        val cp = poly { (cur[axes[it]] ?: 0) / mx }
+        drawPath(cp, p.ac.copy(alpha = 0.28f)); drawPath(cp, p.ac, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+        axes.forEachIndexed { i, a ->
+            val t = measurer.measure(a, style); val q = pt(i, 1.2f)
+            drawText(t, topLeft = Offset(q.x - t.size.width / 2, q.y - t.size.height / 2))
         }
     }
 }

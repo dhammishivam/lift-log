@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import app.liftlog.model.GROUP
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -232,32 +233,55 @@ internal fun MusclesView(st: AppState) {
     val cnt = HashMap<String, Int>(); val pc = HashMap<String, Int>()
     idx.ws.forEach { w ->
         val tg = if (w.start >= from) cnt else if (w.start >= pf) pc else null
-        tg?.let { m -> w.exercises.forEach { it2 -> val mu = idx.exOf(it2.eid).muscle; m[mu] = (m[mu] ?: 0) + working(it2.sets).size } }
+        tg?.let { m -> w.exercises.forEach { it2 -> val mu = idx.exOf(it2.eid).muscle; val n = working(it2.sets).size; if (n > 0) m[mu] = (m[mu] ?: 0) + n } }
     }
-    val rows = cnt.entries.sortedByDescending { it.value }; val mx = maxOf(1, rows.maxOfOrNull { it.value } ?: 0); val tot = rows.sumOf { it.value }; val wk = days / 7.0
-    ChipRow { listOf(7 to "7 days", 30 to "30 days", 90 to "90 days").forEach { (k, l) -> Chip(l, st.mu == k) { st.mu = k } } }
-    Big("$tot sets", Modifier.padding(top = 12.dp))
-    Mu("Working sets in the last $days days" + if (days > 7) " · about ${(tot / wk).let { r -> fmtN(if (r < 10) (r * 10).roundToInt() / 10.0 else r.roundToInt().toDouble()) }} a week" else "")
-    if (rows.isNotEmpty()) BodyMap(cnt)
+    fun groups(m: Map<String, Int>) = HashMap<String, Int>().also { g -> m.forEach { (k, v) -> GROUP[k]?.let { gr -> g[gr] = (g[gr] ?: 0) + v } } }
+    val rows = cnt.entries.sortedByDescending { it.value }; val mx = maxOf(1, rows.maxOfOrNull { it.value } ?: 0); val tot = rows.sumOf { it.value }
+    val ptot = pc.values.sum(); val wk = days / 7.0
+    var sel by remember { mutableStateOf<String?>(null) }
+    ChipRow { listOf(7 to "7 days", 30 to "30 days", 90 to "3 months", 365 to "1 year").forEach { (k, l) -> Chip(l, st.mu == k) { st.mu = k } } }
+    Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.Bottom) {
+        Big("$tot sets")
+        Spacer(Modifier.width(10.dp))
+        if (ptot > 0 || tot > 0) {
+            val d = tot - ptot
+            Txt((if (d >= 0) "+" else "−") + kotlin.math.abs(d) + " vs previous ${if (days == 365) "year" else "$days days"}", Modifier.padding(bottom = 4.dp), size = 14.sp, color = if (d >= 0) p.ok else p.fa)
+        }
+    }
+    Mu("Working sets per muscle" + if (days > 7) " · about ${(tot / wk).let { r -> fmtN(if (r < 10) (r * 10).roundToInt() / 10.0 else r.roundToInt().toDouble()) }} a week" else "", size = 14.sp)
+    if (rows.isEmpty()) { Mu("No workouts in this period.", Modifier.padding(top = 12.dp)); return }
+    BodyMap(cnt, sel = sel)
+    Panel(Modifier.padding(top = 14.dp)) {
+        Txt("Balance", size = 16.sp, weight = FontWeight.SemiBold)
+        Mu("Sets per muscle group. Dashed: the previous ${if (days == 365) "year" else "$days days"}.", size = 13.sp)
+        BalanceRadar(groups(cnt), groups(pc), Modifier.padding(top = 4.dp))
+    }
+    Label("By muscle")
     rows.forEach { (m, v) ->
         val pv = pc[m] ?: 0; val dv = v - pv
-        Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-            Txt(m, Modifier.width(110.dp), size = 15.sp)
-            Box(Modifier.weight(1f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(p.s2)) {
-                Box(Modifier.fillMaxWidth(v.toFloat() / mx).fillMaxHeight().clip(RoundedCornerShape(6.dp)).background(p.ac))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (sel == m) p.s1 else Color.Transparent)
+            .clickable { sel = if (sel == m) null else m }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(12.dp).clip(CircleShape).background(muscleColor(v, mx)))
+            Spacer(Modifier.width(8.dp))
+            Txt(m, Modifier.width(100.dp), size = 15.sp)
+            Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(p.s2)) {
+                Box(Modifier.fillMaxWidth(v.toFloat() / mx).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(muscleColor(v, mx)))
             }
-            Column(Modifier.padding(start = 10.dp), horizontalAlignment = Alignment.End) {
-                Txt(v.toString(), size = 18.sp, weight = FontWeight.SemiBold)
-                Mu(if (days > 7) "${fmtN(r1(v / wk))}/wk" else if (dv != 0) "${if (dv > 0) "+" else "−"}${kotlin.math.abs(dv)} vs prev" else "same as prev", size = 12.sp)
+            Column(Modifier.width(76.dp).padding(start = 10.dp), horizontalAlignment = Alignment.End) {
+                Txt(v.toString(), size = 17.sp, weight = FontWeight.SemiBold)
+                Txt(if (dv == 0) "same" else "${if (dv > 0) "+" else "−"}${kotlin.math.abs(dv)}", size = 12.sp, color = when { dv > 0 -> p.ok; dv < 0 -> p.fa; else -> p.mu })
             }
         }
-        Divider()
     }
-    if (rows.isEmpty()) Mu("No workouts in this period.", Modifier.padding(top = 12.dp))
     val miss = listOf("Chest", "Back", "Shoulders", "Biceps", "Triceps", "Quads", "Hamstrings", "Glutes", "Calves", "Abs").filter { it !in cnt }
-    if (miss.isNotEmpty() && rows.isNotEmpty()) Mu("Not trained in this period: ${miss.joinToString(", ")}.", Modifier.padding(top = 12.dp))
-    Mu("Each set counts toward the exercise's main muscle. Warm-ups are left out.", Modifier.padding(top = 8.dp))
+    if (miss.isNotEmpty()) Mu("Not trained in this period: ${miss.joinToString(", ")}.", Modifier.padding(top = 12.dp))
+    Mu("Each set counts toward the exercise's main muscle. Warm-ups are left out. Tap a muscle to find it on the map.", Modifier.padding(top = 8.dp), size = 13.sp)
 }
+
+/** A rounded panel for a section of the Muscles screen. */
+@Composable
+private fun Panel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
+    Column(modifier.fillMaxWidth().card(16.dp), content = content)
 
 private data class Ag(val n: Int, val t: Long, val v: Double, val s: Int, val p: Int, val d: Int)
 
