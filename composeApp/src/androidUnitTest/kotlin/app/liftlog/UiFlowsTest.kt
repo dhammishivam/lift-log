@@ -101,9 +101,14 @@ class UiFlowsTest {
     /** Clicks through the node's click action, so off-screen nodes need no scrolling. performScrollTo starts a scroll
      *  animation that never finishes with the frame clock paused, and then the next idle wait never returns. */
     private fun click(n: SemanticsNodeInteraction) {
-        val node = n.fetchSemanticsNode()
-        if (androidx.compose.ui.semantics.SemanticsActions.OnClick in node.config) n.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-        else n.performClick()
+        // Found in the unmerged tree, so the node is often the Text inside a button: use the nearest ancestor that clicks.
+        val onClick = androidx.compose.ui.semantics.SemanticsActions.OnClick
+        var t: androidx.compose.ui.semantics.SemanticsNode? = n.fetchSemanticsNode()
+        while (t != null && onClick !in t.config) t = t.parent
+        if (t != null) {
+            val id = t.id
+            rule.onNode(androidx.compose.ui.test.SemanticsMatcher("node $id") { it.id == id }, useUnmergedTree = true).performSemanticsAction(onClick)
+        } else n.performClick()
         pump()
     }
     private fun tap(text: String, last: Boolean = false, sub: Boolean = false) { see(text, sub); click(if (last) nodes(text, sub).onLast() else nodes(text, sub).onFirst()) }
