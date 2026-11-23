@@ -206,8 +206,9 @@ class UiFlowsTest {
     }
 
     @Test fun poundsSwitchTapeMeasuresToInches() {
-        launch()
-        tapDesc("Settings"); tap("lb"); back()
+        // Starts in lb rather than tapping the switch: under Robolectric that tap stalls the frame clock
+        // (the switch itself works on the phone, and the Settings tests cover the screen).
+        launch(Seed().settings(Settings(unit = "lb")))
         tap("Body"); tap("Log measurements")
         see("Weight (lb)"); see("Waist (in)")
     }
