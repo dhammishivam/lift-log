@@ -32,8 +32,6 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w411dp-h731dp-xxhdpi")
 class UiFlowsTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
-    /** A stuck test fails with a stack trace instead of hanging the build. */
-    @get:Rule val timeout: org.junit.rules.Timeout = org.junit.rules.Timeout.seconds(90)
     @get:Rule val timing = object : org.junit.rules.TestWatcher() {
         var t0 = 0L
         override fun starting(d: org.junit.runner.Description) { t0 = System.currentTimeMillis() }
@@ -55,7 +53,10 @@ class UiFlowsTest {
         pump(300)
         return p
     }
-    private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
+    /** A stuck test fails with a stack trace instead of hanging the build. (JUnit's Timeout rule
+     *  moves the test off the main thread, which Robolectric refuses, so the limit is checked here.) */
+    private val deadline = System.currentTimeMillis() + 90_000
+    private fun pump(ms: Long = 600) { var t = 0L; while (t < ms) { check(System.currentTimeMillis() < deadline) { "test took over 90 s" }; rule.mainClock.advanceTimeBy(50); Thread.sleep(5); t += 50 } }
     private fun nodes(text: String, sub: Boolean = false) = rule.onAllNodesWithText(text, substring = sub, useUnmergedTree = true)
     private fun has(text: String, sub: Boolean = false) = nodes(text, sub).fetchSemanticsNodes().isNotEmpty()
     private fun see(text: String, sub: Boolean = false) {
