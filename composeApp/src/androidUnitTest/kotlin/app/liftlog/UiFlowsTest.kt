@@ -233,10 +233,10 @@ class UiFlowsTest {
         launch()
         tap("Body"); tap("Log measurements")
         see("Waist (cm)")
-        type(1, "78.5"); type(2, "18232")
+        type(0, "78.5"); type(1, "18232")
         tap("Save")
         see("Body fat looks wrong. Check the number.")
-        type(2, "18")
+        type(1, "18")
         tap("Save")
         see("Measurements saved"); see("78.5 kg")
     }
