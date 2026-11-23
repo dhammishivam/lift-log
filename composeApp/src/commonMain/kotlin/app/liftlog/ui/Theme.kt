@@ -70,6 +70,7 @@ object Ic {
     val trophy = icon("trophy", "M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4")
     val gear = icon("gear", "M4 7h9M17 7h3M4 17h3M11 17h9", circle(15f, 7f, 2f), circle(9f, 17f, 2f))
     val dumb = icon("dumb", "M6 7v10M3 9.5v5M18 7v10M21 9.5v5M6 12h12")
+    val heart = icon("heart", "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z")
     val cal = icon("cal", "M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM3 10h18M8 3v4M16 3v4")
     val chart = icon("chart", "M4 4v16h16M8 15l4-4 3 3 5-6")
     val search = icon("search", circle(11f, 11f, 6f), "M20 20l-4.5-4.5")

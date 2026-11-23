@@ -29,7 +29,8 @@ sealed class Screen {
         var title by mutableStateOf(title); var whenMs by mutableStateOf(whenMs); var min by mutableStateOf(min.toString())
         var notes by mutableStateOf(notes); var upd by mutableStateOf(false)
     }
-    class WorkoutDetail(val id: String) : Screen()
+    /** [fresh]: just saved from a live workout, so the page opens with a short summary. */
+    class WorkoutDetail(val id: String, val fresh: Boolean = false) : Screen()
     class ExerciseDetail(val id: String) : Screen() { var k by mutableStateOf<String?>(null); var r by mutableStateOf("All"); var cmp by mutableStateOf<String?>(null) }
     class Picker(val mode: String, val onDone: (List<String>) -> Unit) : Screen() { var q by mutableStateOf(""); var g by mutableStateOf("All"); val sel = mutableStateListOf<String>() }
     class ExEditor(val existing: CustomEx?, val prefill: String = "", val onSaved: ((String) -> Unit)? = null) : Screen()
@@ -208,7 +209,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
             recs > 0 -> "Workout saved. 🏆 " + count(recs, "new record") + "!"
             else -> "Workout saved. ${cmp.ifEmpty { "Nice work!" }}"
         })
-        push(Screen.WorkoutDetail(id))
+        push(Screen.WorkoutDetail(id, fresh = a.editId == null))
     }
 
     fun fromTemplate(title: String, routineId: String?, exs: List<ExItem>) = Active(
@@ -319,5 +320,5 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
 
 fun defTitle(): String {
     val h = ldt(nowMs()).hour
-    return if (h < 12) "Morning workout" else if (h < 17) "Afternoon workout" else "Evening workout"
+    return when { h < 4 || h >= 21 -> "Night workout"; h < 12 -> "Morning workout"; h < 17 -> "Afternoon workout"; else -> "Evening workout" }
 }

@@ -315,7 +315,11 @@ fun openFinish(st: AppState) {
     val a = st.data.active ?: return
     if (a.exercises.none { e -> e.sets.any { it.done == true } }) { st.say("Complete at least one set first"); return }
     val min = if (a.editId != null) (((a.end ?: a.start) - a.start) / 60000).toInt() else maxOf(1, ((nowMs() - a.start) / 60000).toInt())
-    st.push(Screen.Finish(a.title?.ifBlank { null } ?: defTitle(), a.start, min, a.notes ?: ""))
+    val go = { st.push(Screen.Finish(a.title?.ifBlank { null } ?: defTitle(), a.start, min, a.notes ?: "")) }
+    val inc = a.exercises.sumOf { e -> e.sets.count { it.done != true } }
+    // Unticked sets are dropped on save, so say so before leaving the workout rather than in small print after.
+    if (inc > 0 && a.editId == null) st.confirm("${count(inc, "set")} not ticked", "Unticked sets are left out of the saved workout. Go back to tick any you did.", "Finish anyway") { go() }
+    else go()
 }
 
 @Composable

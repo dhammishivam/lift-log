@@ -40,7 +40,9 @@ private fun PickerTheme(content: @Composable () -> Unit) {
     val p = LocalPal.current
     val base = if (p.bg.luminance() < 0.5f) darkColorScheme() else lightColorScheme()
     MaterialTheme(base.copy(primary = p.ac, onPrimary = androidx.compose.ui.graphics.Color.White, surface = p.s1, onSurface = p.ink,
-        surfaceContainerHigh = p.s1, surfaceContainerHighest = p.s2, onSurfaceVariant = p.mu, outline = p.ln, secondaryContainer = p.s2), content = content)
+        surfaceContainerHigh = p.s1, surfaceContainerHighest = p.s2, onSurfaceVariant = p.mu, outline = p.ln, secondaryContainer = p.s2,
+        primaryContainer = androidx.compose.ui.graphics.lerp(p.s2, p.ac, 0.45f), onPrimaryContainer = androidx.compose.ui.graphics.Color.White,
+        tertiaryContainer = androidx.compose.ui.graphics.lerp(p.s2, p.ac, 0.3f), onTertiaryContainer = p.ink), content = content)
 }
 
 /**
@@ -57,7 +59,10 @@ fun DateTimeFields(ms: Long, withTime: Boolean, onChange: (Long) -> Unit, modifi
         if (withTime) PickBox("Time", tShort(ms), Modifier.weight(1f)) { dlg = "t" }
     }
     if (dlg == "d") PickerTheme {
-        val state = rememberDatePickerState(initialSelectedDateMillis = d.date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds())
+        // Workouts and measurements are logged after the fact, so days after today can't be picked.
+        val today = remember { ldt(app.liftlog.logic.nowMs()).date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds() }
+        val state = rememberDatePickerState(initialSelectedDateMillis = d.date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
+            selectableDates = object : SelectableDates { override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= today })
         DatePickerDialog(onDismissRequest = { dlg = null },
             confirmButton = { TextButton({
                 state.selectedDateMillis?.let { sel ->

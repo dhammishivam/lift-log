@@ -32,6 +32,7 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
         if (w == null) { Body { Mu("This workout was deleted.") }; return@Column }
         val pm = idx.prm[w.id] ?: PrMarks(0, emptyMap()); val ss = ssInfo(w.exercises); val cmp = compareWeight(idx.wVol(w))
         Body {
+            if (s.fresh) DoneHero(st, w)
             Txt(w.title, size = 24.sp, weight = FontWeight.SemiBold)
             Mu("${dLong(w.start)} · ${tShort(w.start)}", size = 15.sp)
             StatsCard(listOf("Time" to dur(w.end - w.start), "Volume" to wvShort(idx.wVol(w), lb), "Sets" to idx.wSets(w).toString(), "Records" to pm.n.toString()),
@@ -104,14 +105,13 @@ fun SearchBox(value: String, ph: String, onChange: (String) -> Unit) {
     }
 }
 
-private fun initials(n: String) = n.replace(Regex("\\(.*?\\)"), "").split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1) }.uppercase()
 
 @Composable
 fun ExRow(st: AppState, x: Exercise, sel: Boolean, onClick: () -> Unit) {
     val p = LocalPal.current; val h = st.idx.h[x.id]
     Row(Modifier.fillMaxWidth().heightIn(min = 58.dp).clickable(onClick = onClick).padding(vertical = 8.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(if (sel) p.ac else p.s2), contentAlignment = Alignment.Center) {
-            if (sel) Icon(Ic.check, null, Modifier.size(20.dp), tint = Color.White) else Txt(initials(x.name), size = 15.sp, weight = FontWeight.Bold, color = p.mu)
+        Box(Modifier.size(44.dp).clip(CircleShape).background(if (sel) p.ac else p.s2), contentAlignment = Alignment.Center) {
+            if (sel) Icon(Ic.check, null, Modifier.size(20.dp), tint = Color.White) else MuscleThumb(x, Modifier.fillMaxSize())
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -347,4 +347,42 @@ fun PinEditorScreen(st: AppState, s: Screen.PinEditor) {
             if (st.idx.pin(s.eid).isNotEmpty()) Btn("Remove note", { st.savePin(s.eid, ""); st.close(s); st.say("Note removed") }, Modifier.fillMaxWidth().padding(top = 8.dp), kind = BtnKind.Danger)
         }
     }
+}
+
+/** The top of a workout page right after it is saved: which workout this was, how it compares with last time, and the streak. */
+@Composable
+private fun DoneHero(st: AppState, w: Workout) {
+    val idx = st.idx; val p = LocalPal.current
+    val n = idx.ws.count { it.start <= w.start }
+    val prev = idx.ws.filter { it.id != w.id && it.start < w.start && ((w.routineId != null && it.routineId == w.routineId) || it.title.equals(w.title, true)) }.maxByOrNull { it.start }
+    val (streak, _) = idx.weekRuns()
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp).clip(RoundedCornerShape(20.dp)).background(p.acs).padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(56.dp).clip(CircleShape).background(p.ac), contentAlignment = Alignment.Center) { Icon(Ic.check, null, Modifier.size(30.dp), tint = Color.White) }
+        Txt("Workout complete", Modifier.padding(top = 10.dp), size = 22.sp, weight = FontWeight.Bold)
+        Mu("Your ${ordinal(n)} workout${if (streak > 1) " · $streak-week streak" else ""}", size = 15.sp)
+        if (prev != null) {
+            val dv = idx.wVol(w) - idx.wVol(prev); val ds = idx.wSets(w) - idx.wSets(prev)
+            val pct = if (idx.wVol(prev) > 0) kotlin.math.round(dv / idx.wVol(prev) * 100).toInt() else null
+            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                if (pct != null && isVolW(idx, w)) Change("Volume", (if (pct >= 0) "+" else "−") + "${kotlin.math.abs(pct)}%", pct >= 0)
+                Change("Sets", (if (ds >= 0) "+" else "−") + kotlin.math.abs(ds), ds >= 0)
+            }
+            Mu("vs ${prev.title}, ${dShort(prev.start)}", Modifier.padding(top = 4.dp), size = 13.sp)
+        }
+    }
+}
+
+private fun isVolW(idx: app.liftlog.logic.Index, w: Workout) = idx.wVol(w) > 0
+
+@Composable
+private fun Change(label: String, v: String, up: Boolean) {
+    val p = LocalPal.current
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Txt(v, size = 18.sp, weight = FontWeight.Bold, color = if (up) p.ok else p.fa); Mu(label, size = 12.sp)
+    }
+}
+
+private fun ordinal(n: Int): String {
+    val suf = if (n % 100 in 11..13) "th" else when (n % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
+    return "${fmtN(n.toDouble())}$suf"
 }

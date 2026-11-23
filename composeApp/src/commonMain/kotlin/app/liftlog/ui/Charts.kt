@@ -297,3 +297,49 @@ fun WeekBars(weeks: List<Double>, modifier: Modifier = Modifier) {
         val g = measurer.measure("10–20", style); drawText(g, topLeft = Offset(size.width - g.size.width - 2.dp.toPx(), y(20f) + 1.dp.toPx()))
     }
 }
+
+private val BACK_SIDE = setOf("Lats", "Upper back", "Lower back", "Rear delts", "Triceps", "Hamstrings", "Glutes", "Calves", "Abductors")
+
+/** Where a muscle thumbnail looks: the view and the area around the muscles an exercise works most. */
+private class ThumbFocus(val pv: ParsedView, val area: androidx.compose.ui.geometry.Rect)
+
+private fun thumbFocus(t: Map<String, Double>): ThumbFocus? {
+    if (t.isEmpty()) return null
+    val top = t.values.max(); val main = t.filterValues { it >= top }.keys
+    val pv = if (main.count { it in BACK_SIDE } > main.size / 2) BACK_V else FRONT_V
+    // Side delts have no shape of their own: aim at the delts they show through.
+    val shown = main.flatMap { r -> listOf(r) + ALSO.filterValues { it == r }.keys }
+    // Aim at the figure's left side: a whole pair (both biceps) would zoom out too far. Midline shapes count too.
+    val mid = pv.v.vb[0] + pv.v.vb[2] / 2
+    val all = shown.flatMap { pv.pieces[it].orEmpty() }.map { it.b }
+    val rects = all.filter { it.center.x < mid + 20f }.ifEmpty { all }
+    if (rects.isEmpty()) return null
+    return ThumbFocus(pv, rects.reduce { a, b -> androidx.compose.ui.geometry.Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) })
+}
+
+/**
+ * A small picture of the body zoomed onto what an exercise works: the main muscle in the accent colour, helpers
+ * lighter. Cardio and other exercises with no muscle map show a heart instead.
+ */
+@Composable
+fun MuscleThumb(x: app.liftlog.model.Exercise, modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    val t = androidx.compose.runtime.remember(x.id, x.name, x.muscle) { app.liftlog.logic.muscleTargets(x) }
+    val f = androidx.compose.runtime.remember(t) { thumbFocus(t) }
+    if (f == null) { Box(modifier, contentAlignment = Alignment.Center) { androidx.compose.material3.Icon(Ic.heart, null, Modifier.size(20.dp), tint = p.mu) }; return }
+    val top = t.values.max()
+    Canvas(modifier) {
+        val a = f.area; val side = maxOf(a.width, a.height, 200f) * 1.5f
+        val k = size.width / side
+        scale(k, k, pivot = Offset.Zero) {
+            translate(-(a.center.x - side / 2), -(a.center.y - side / 2)) {
+                drawPath(f.pv.base, lerp(p.s2, p.ink, 0.26f))
+                f.pv.pieces.forEach { (m, ps) ->
+                    val w = maxOf(t[m] ?: 0.0, ALSO[m]?.let { t[it] } ?: 0.0)
+                    val c = when { w >= top -> p.ac; w > 0 -> lerp(p.s2, p.ac, 0.5f); else -> lerp(p.s2, p.ink, 0.14f) }
+                    ps.forEach { pc -> drawPath(pc.path, c); drawPath(pc.path, p.s2, style = Stroke(width = 3f)) }
+                }
+            }
+        }
+    }
+}

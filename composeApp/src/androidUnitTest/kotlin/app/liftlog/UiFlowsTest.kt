@@ -186,11 +186,12 @@ class UiFlowsTest {
         tap("New record!"); gone("New record!")
         assertNotNull(p.live.last()!!.restEnd)
         tap("Finish")
+        see("1 set not ticked"); tap("Finish anyway") // the second bench set was never ticked
         see("Save workout"); see("3 new records")
         tap("Save workout", last = true)
         see("3 new records!") // Champ celebrates the save
         tap("3 new records!")
-        see("Share")
+        see("Workout complete"); see("Share")
         pump(600)
         assertNull("notification cleared after saving", p.live.last())
         tap("Share")
