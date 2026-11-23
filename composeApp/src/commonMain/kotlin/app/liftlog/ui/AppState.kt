@@ -54,6 +54,8 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
     var restEnd by mutableStateOf(0L)
     var restTotal by mutableStateOf(1L)
     var timer by mutableStateOf<SetTimer?>(null)
+    var celebration by mutableStateOf<Celebration?>(null)
+    val celebrations: Boolean get() = data.settings.cele != false
 
     // tab view state
     var hv by mutableStateOf("list"); var hm by mutableStateOf("dur"); var wsel by mutableStateOf(11)
@@ -182,7 +184,8 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         store.setActive(null); stopRest(); timer = null
         stack.clear(); tab = Tab.History; hv = "list"; wsel = 11
         val cmp = compareWeight(idx.wVol(w)); val recs = idx.prm[id]?.n ?: 0
-        say(when {
+        if (a.editId == null && recs > 0 && celebrations) { celebration = Celebration("champ", count(recs, "new record") + "!", "${w.title} saved", Mascots.quip("champ")); platform.celebrate() }
+        else say(when {
             a.editId != null -> "Workout updated"
             recs > 0 -> "Workout saved. 🏆 " + count(recs, "new record") + "!"
             else -> "Workout saved. ${cmp.ifEmpty { "Nice work!" }}"

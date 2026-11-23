@@ -55,6 +55,8 @@ interface Platform {
     fun setActionHandler(handler: (String) -> Unit) {}
     /** Refreshes the home screen widget. */
     fun updateWidget(info: WidgetInfo) {}
+    /** A mascot picture for celebrations ("titan", "classic", "pump", "champ"), or null. */
+    fun mascot(kind: String): ImageBitmap? = null
     /** Shares a workout image. Returns false where sharing images isn't available. */
     fun shareCard(card: ShareCard): Boolean = false
 }

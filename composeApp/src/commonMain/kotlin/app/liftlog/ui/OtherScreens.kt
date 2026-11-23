@@ -226,6 +226,7 @@ fun SettingsScreenView(st: AppState) {
                 Toggle(set.bwv == true) { st.setSettings { it.copy(bwv = it.bwv != true) } }
             }
             BoxCard("Keep screen on", "Stops your phone sleeping while a workout is open.") { Toggle(set.awake != false) { st.setSettings { it.copy(awake = it.awake == false) } } }
+            BoxCard("Celebrations", "A Lift Log mascot cheers when you set a record.") { Toggle(set.cele != false) { st.setSettings { it.copy(cele = it.cele == false) } } }
             BoxCard("Default rest timer", "Used for exercises you haven't logged before.") {
                 Btn(fmtRest(set.rest), { st.showMenu("Default rest timer", RESTS.map { r -> MenuItem(fmtRest(r), on = r == set.rest) { st.setSettings { it.copy(rest = r) } } }) }, icon = Ic.clock)
             }

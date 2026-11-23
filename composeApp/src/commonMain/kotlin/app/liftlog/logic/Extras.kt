@@ -69,7 +69,8 @@ fun warmupPlan(work: Double, bar: Double, lb: Boolean): List<Pair<Double, Double
 /** One record line: exercise name and what was beaten, e.g. "Bench Press (Barbell)" to "Heaviest weight 62.5 kg". */
 data class RecordLine(val exercise: String, val what: String)
 
-private fun prValue(k: String, s: WSet, lb: Boolean): String {
+/** A record value as shown: "62.5 kg", "12 reps", "1:30". */
+fun prValue(k: String, s: WSet, lb: Boolean): String {
     val m = setM(s)
     return when (k) {
         "w" -> wt(m.w, lb); "orm" -> wt(r1(m.orm), lb); "vol" -> wv(m.vol, lb)

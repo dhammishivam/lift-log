@@ -166,6 +166,11 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     override fun updateWidget(info: WidgetInfo) { runCatching { LiftWidget.save(ctx, info) } }
 
     override fun shareCard(card: ShareCard): Boolean = ShareImage.share(act, card)
+
+    override fun mascot(kind: String): ImageBitmap? {
+        val res = when (kind) { "titan" -> R.drawable.mascot_titan; "classic" -> R.drawable.mascot_classic; "pump" -> R.drawable.mascot_pump; "champ" -> R.drawable.mascot_champ; else -> return null }
+        return runCatching { BitmapFactory.decodeResource(act.resources, res)?.asImageBitmap() }.getOrNull()
+    }
     fun onForeground() { foreground = true; cancel() }
     fun onBackground() { foreground = false; schedule() }
 

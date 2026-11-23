@@ -75,6 +75,7 @@ fun App(platform: Platform) {
                     }
                 }
                 MenuOverlay(st)
+                CelebrationOverlay(st)
                 ToastOverlay(st)
             }
         }

@@ -218,7 +218,11 @@ fun checkSet(st: AppState, ei: Int, si: Int) {
     val now = idx.livePrs(na, ei)[si]
     if (ns.done == true && now != null && now != before) {
         val x = idx.exOf(it.eid)
-        st.say("🏆 New record: ${x.name}, " + now.joinToString(", ") { k -> (PRL[k] ?: k).lowercase() })
+        if (st.celebrations) {
+            val k = now.first(); val m = Mascots.forRecord(k)
+            val more = if (now.size > 1) " (+${now.size - 1} more)" else ""
+            st.celebration = Celebration(m, "New record!", "${x.name}\n${PRL[k] ?: k}: ${prValue(k, ns, st.lb)}$more", Mascots.quip(m))
+        } else st.say("🏆 New record: ${x.name}, " + now.joinToString(", ") { k -> (PRL[k] ?: k).lowercase() })
         st.platform.celebrate()
     }
 }
