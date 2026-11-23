@@ -193,7 +193,7 @@ class AppStateTest {
         assertEquals(listOf(WSet(kg = 60.0, reps = 8.0)), w.exercises[0].sets)
         assertNull(st.data.active); assertEquals(0L, st.restEnd)
         assertEquals(Tab.History, st.tab); assertTrue((st.stack.single() as Screen.WorkoutDetail).id == w.id)
-        assertTrue(st.toast!!.text.startsWith("Workout saved"))
+        assertTrue("opens with the Workout complete summary", (st.stack.single() as Screen.WorkoutDetail).fresh)
         assertNull(p.restEnds.last())
     }
 

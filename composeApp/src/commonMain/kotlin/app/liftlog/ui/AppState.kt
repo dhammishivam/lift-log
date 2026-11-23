@@ -202,13 +202,11 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         }
         store.setActive(null); stopRest(); timer = null
         stack.clear(); tab = Tab.History; hv = "list"; wsel = 11
-        val cmp = compareWeight(idx.wVol(w)); val recs = idx.prm[id]?.n ?: 0
+        val recs = idx.prm[id]?.n ?: 0
         if (a.editId == null && recs > 0 && celebrations) { celebration = Celebration("champ", count(recs, "new record") + "!", "${w.title} saved", Mascots.quip("champ")); platform.celebrate() }
-        else say(when {
-            a.editId != null -> "Workout updated"
-            recs > 0 -> "Workout saved. 🏆 " + count(recs, "new record") + "!"
-            else -> "Workout saved. ${cmp.ifEmpty { "Nice work!" }}"
-        })
+        // A new workout opens with its own "Workout complete" summary, so only edits and celebrations-off need a toast.
+        else if (a.editId != null) say("Workout updated")
+        else if (recs > 0) say("Workout saved. 🏆 " + count(recs, "new record") + "!")
         push(Screen.WorkoutDetail(id, fresh = a.editId == null))
     }
 

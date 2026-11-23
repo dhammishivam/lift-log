@@ -997,7 +997,7 @@ function saveWorkout(sh){const st=sh.st,m=A;const exs=m.exercises.map(it=>({eid:
   const w={kind:'workout',id,title:(st.title||'').trim()||defTitle(),notes:st.notes||'',start,end,routineId:m.routineId||null,exercises:exs};
   put(id,w);
   if(st.upd&&m.routineId&&S.docs[m.routineId]){const r=clone(S.docs[m.routineId]);r.exercises=exs.map(it=>({eid:it.eid,rest:it.rest,...ssOf(it),sets:it.sets.map(s=>({t:s.t,...valsOf(s)}))}));r.updated=Date.now();put(r.id,r)}
-  A=null;put('active',null);REST={end:0,total:0};[...SH].forEach(s=>closeSheet(s));UI.tab='history';UI.hv='list';UI.wsel=11;location.hash='history';renderMain(true);const nrec=(PRM[id]||{n:0}).n;if(!(m.editId==null&&nrec&&celebrate('champ',`${cnt(nrec,'new record')}!`,`${w.title} saved`)))toast(m.editId?'Workout updated':nrec?`Workout saved. 🏆 ${cnt(nrec,'new record')}!`:`Workout saved. ${compare(wVol(w))||'Nice work!'}`.trim());openSheet('wd',{id,fresh:!m.editId})}
+  A=null;put('active',null);REST={end:0,total:0};[...SH].forEach(s=>closeSheet(s));UI.tab='history';UI.hv='list';UI.wsel=11;location.hash='history';renderMain(true);const nrec=(PRM[id]||{n:0}).n;if(!(m.editId==null&&nrec&&celebrate('champ',`${cnt(nrec,'new record')}!`,`${w.title} saved`)))(m.editId||nrec)&&toast(m.editId?'Workout updated':`Workout saved. 🏆 ${cnt(nrec,'new record')}!`);openSheet('wd',{id,fresh:!m.editId})}
 
 /* ---------- workout detail ---------- */
 /* ---------- share image (same layout as the app's) ---------- */
