@@ -15,6 +15,8 @@ LOG WORKOUTS QUICKLY
 • Weight suggestions for progressive overload
 • Warm-up, drop and failure sets, RPE, supersets and notes
 • Rest timer that alerts you, even with the app in the background
+• Workout timer, rest countdown and next set in your notifications, with buttons to skip rest or tick the set
+• One-tap warm-up sets that ramp up to your working weight
 
 ROUTINES
 • Save the workouts you repeat and start them in one tap
@@ -22,18 +24,20 @@ ROUTINES
 • Build routines automatically from your workout history
 
 PROGRESS
-• Personal records for heaviest weight, best estimated 1RM and best set volume
+• Personal records for heaviest weight, best estimated 1RM and best set volume, celebrated the moment you set them
 • Charts for every exercise
 • Weekly volume, calendar with streaks, muscles worked and monthly reports
 • Plateau hints when a lift stops moving
 
 BODY
-• Track weight, body fat and tape measurements with charts
+• Track weight, body fat and tape measurements (cm or inches) with charts
 • Progress photos kept on your phone
 
 TOOLS
 • Plate calculator and 1RM calculator
 • kg or lb, dark or light theme
+• Home screen widget with your week, your streak and one tap to start your next routine
+• Share any workout as an image
 
 SWITCHING FROM HEVY?
 Import your Hevy workout and measurement exports (CSV) and keep your whole history, PRs and charts. A step-by-step guide in Settings walks you through it.
