@@ -82,16 +82,8 @@ private fun ProfileHeader(st: AppState) {
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(16.dp)).background(p.s1).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("Workouts" to compactN(ps.workouts.toDouble()), "Hours" to durShort(ps.ms).removeSuffix(" h"), "Volume" to wvShort(ps.vol, lb), "Records" to compactN(ps.records.toDouble()))
-                .forEachIndexed { i, (l, v) ->
-                    if (i > 0) Box(Modifier.width(1.dp).height(34.dp).background(p.ln))
-                    Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Txt(v, size = 19.sp, weight = FontWeight.SemiBold, maxLines = 1)
-                        Mu(l, size = 12.sp)
-                    }
-                }
-        }
+        StatsCard(listOf("Workouts" to compactN(ps.workouts.toDouble()), "Time" to durShort(ps.ms), "Volume" to wvShort(ps.vol, lb), "Records" to compactN(ps.records.toDouble())),
+            Modifier.padding(top = 16.dp))
     }
 }
 
@@ -392,8 +384,8 @@ internal fun ReportView(st: AppState) {
         }
     }
     compareWeight(c.v).takeIf { it.isNotEmpty() }?.let { Mu("$it lifted in total", Modifier.padding(top = 12.dp), size = 15.sp) }
-    val mus = HashMap<String, Int>(); val exs = HashMap<String, Int>()
-    cw.forEach { w -> w.exercises.forEach { it2 -> val x = idx.exOf(it2.eid); mus[x.muscle] = (mus[x.muscle] ?: 0) + working(it2.sets).size; exs[it2.eid] = (exs[it2.eid] ?: 0) + 1 } }
+    val exs = HashMap<String, Int>()
+    cw.forEach { w -> w.exercises.forEach { it2 -> exs[it2.eid] = (exs[it2.eid] ?: 0) + 1 } }
     fun bo(l: List<HEntry>) = l.maxOfOrNull { e -> working(e.sets).maxOfOrNull { setM(it).orm } ?: 0.0 } ?: 0.0
     val gains = exs.keys.filter { isVol(idx.exOf(it).type) }.mapNotNull { e ->
         val h = idx.h[e] ?: return@mapNotNull null; val now1 = bo(h.filter { it.start in a until b }); val bef = bo(h.filter { it.start < a })
@@ -410,7 +402,9 @@ internal fun ReportView(st: AppState) {
         }
     }
     H3("Most-trained muscles")
-    mus.entries.sortedByDescending { it.value }.take(6).forEach { (m, v) -> Row(Modifier.fillMaxWidth().padding(vertical = 7.dp)) { Txt(m, Modifier.weight(1f), size = 15.sp); Txt("$v sets", weight = FontWeight.SemiBold) }; Divider() }
+    // Same counting as the Muscles screen: 1 set for the target muscle, ½ for helpers.
+    regionSets(cw) { idx.exOf(it) }.entries.sortedByDescending { it.value }.take(6).forEach { (m, v) ->
+        Row(Modifier.fillMaxWidth().clickable { st.push(Screen.Stats("mus")) }.padding(vertical = 7.dp)) { Txt(m, Modifier.weight(1f), size = 15.sp); Txt("${setsLabel(v)} sets", weight = FontWeight.SemiBold) }; Divider() }
     H3("Most-done exercises")
     exs.entries.sortedByDescending { it.value }.take(5).forEach { (e, v) -> Row(Modifier.fillMaxWidth().padding(vertical = 7.dp)) { Txt(idx.exOf(e).name, Modifier.weight(1f), size = 15.sp); Txt("$v×", weight = FontWeight.SemiBold) }; Divider() }
 }

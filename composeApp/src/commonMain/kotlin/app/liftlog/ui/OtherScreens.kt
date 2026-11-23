@@ -114,7 +114,6 @@ private fun newMeasure(st: AppState) {
 @Composable
 fun MeasureEditorScreen(st: AppState, s: Screen.MeasureEditor) {
     val lb = LocalLb.current; val p = LocalPal.current; val e = s.e; val latest = st.idx.ms.firstOrNull()
-    var dateText by remember { mutableStateOf(ldt(e.date).date.toString()) }
     fun save() {
         if (e.v.isEmpty() && e.photos.isNullOrEmpty()) { st.say("Enter a measurement or add a photo"); return }
         e.v.firstNotNullOfOrNull { (k, v) -> measureProblem(k, v) }?.let { st.say(it); return }
@@ -124,7 +123,7 @@ fun MeasureEditorScreen(st: AppState, s: Screen.MeasureEditor) {
     Column(Modifier.fillMaxSize()) {
         TopBar(if (s.isNew) "Log measurements" else "Edit measurements", left = { IconBtn(Ic.x, "Close", { st.close(s) }) }, right = { Btn("Save", { save() }, kind = BtnKind.Primary, small = true) })
         Body {
-            Field("Date (YYYY-MM-DD)", dateText, { t -> dateText = t; runCatching { LocalDate.parse(t.trim()) }.getOrNull()?.let { d -> s.e = s.e.copy(date = startOfDay(d) + 12 * 3_600_000L) } })
+            DateTimeFields(s.e.date, withTime = false, onChange = { s.e = s.e.copy(date = startOfDay(ldt(it).date) + 12 * 3_600_000L) })
             MF.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     row.forEach { (k, l, _) ->
@@ -321,7 +320,7 @@ fun OrmScreen(st: AppState) {
                         Divider()
                         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                             Txt("$pc%", Modifier.weight(1f), size = 15.sp); Txt("${fmtN(r1(one * pc / 100))} $u", Modifier.weight(1f), size = 15.sp)
-                            Txt("${if (pc == 100) 1 else maxOf(1, kotlin.math.round(30 * (100.0 / pc - 1)).toInt())} reps", size = 15.sp)
+                            val n = if (pc == 100) 1 else maxOf(1, kotlin.math.round(30 * (100.0 / pc - 1)).toInt()); Txt(if (n == 1) "1 rep" else "$n reps", size = 15.sp)
                         }
                     }
                 }

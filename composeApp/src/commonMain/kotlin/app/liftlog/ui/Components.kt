@@ -126,6 +126,21 @@ fun Stat(label: String, value: String, modifier: Modifier = Modifier, accent: Bo
     }
 }
 
+/** Totals in a rounded card: even columns with thin dividers, the value above its label, shrinking long values to fit. */
+@Composable
+fun StatsCard(items: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.s1).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        items.forEachIndexed { i, (l, v) ->
+            if (i > 0) Box(Modifier.width(1.dp).height(34.dp).background(p.ln))
+            Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Txt(v, size = when { v.length <= 6 -> 19.sp; v.length <= 8 -> 17.sp; else -> 15.sp }, weight = FontWeight.SemiBold, maxLines = 1)
+                Mu(l, size = 12.sp)
+            }
+        }
+    }
+}
+
 @Composable fun Divider() = Box(Modifier.fillMaxWidth().height(1.dp).background(LocalPal.current.ln))
 
 /** A labelled text field. */

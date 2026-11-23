@@ -60,7 +60,9 @@ fun LiveScreen(st: AppState) {
         Divider()
         val ctx = CardCtx(true, a.start, a.editId, a, a.exercises) { st.setItems(it) }
         val ss = ssInfo(a.exercises)
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+        val list = androidx.compose.foundation.lazy.rememberLazyListState()
+        LaunchedEffect(st.focusEx, a.exercises.size) { st.focusEx?.let { i -> if (i < a.exercises.size) { list.animateScrollToItem(i); st.focusEx = null } } }
+        LazyColumn(Modifier.weight(1f), state = list, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
             if (a.exercises.isEmpty()) item { EmptyState(Ic.dumb, "Get started", "Add an exercise to start your workout.") }
             items(a.exercises.size) { ei -> ExerciseCard(st, ctx, ei, ss(a.exercises[ei].ss)) }
             item {
@@ -73,7 +75,9 @@ fun LiveScreen(st: AppState) {
                 }
             }
         }
-        if (st.restEnd > 0) RestBar(st)
+        // While typing, the keyboard already takes half the screen; the timer keeps running and comes back after.
+        val typing = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+        if (st.restEnd > 0 && !typing) RestBar(st)
     }
 }
 
@@ -95,7 +99,7 @@ private fun RestBar(st: AppState) {
 }
 
 fun pickToAdd(st: AppState, ctx: CardCtx) {
-    st.push(Screen.Picker("add") { ids -> ctx.set(ctx.items + ids.map { st.blankItem(it) }) })
+    st.push(Screen.Picker("add") { ids -> if (ctx.live && ids.isNotEmpty()) st.focusEx = ctx.items.size; ctx.set(ctx.items + ids.map { st.blankItem(it) }) })
 }
 
 @Composable
@@ -121,7 +125,9 @@ fun ExerciseCard(st: AppState, ctx: CardCtx, ei: Int, ssi: Pair<Char, Long>?) {
         if (pin.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(p.acs).padding(horizontal = 10.dp, vertical = 7.dp)) {
             Icon(Ic.pin, null, Modifier.size(16.dp), tint = p.ac); Spacer(Modifier.width(8.dp)); Txt(pin, size = 14.sp)
         }
-        if (live && idx.stalled(it.eid)) Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Coaching hints are for a session in progress, not for fixing up a saved one.
+        val coach = live && ctx.editId == null; val stalled = coach && idx.stalled(it.eid)
+        if (stalled) Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Ic.warn, null, Modifier.size(16.dp), tint = p.wu); Spacer(Modifier.width(6.dp)); Txt("No progress in 4 weeks. Try a lighter deload week or a variation.", size = 14.sp, color = p.wu)
         }
         BasicTextField(it.note ?: "", { v -> upd { e -> e.copy(note = v) } }, Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -132,7 +138,7 @@ fun ExerciseCard(st: AppState, ctx: CardCtx, ei: Int, ssi: Pair<Char, Long>?) {
         }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Ic.clock, null, Modifier.size(16.dp), tint = p.ac); Spacer(Modifier.width(6.dp)); Txt("Rest timer: ${fmtRest(it.rest)}", size = 14.sp, weight = FontWeight.Medium, color = p.ac)
         }
-        if (sgs.any { s -> s?.up == true }) Row(verticalAlignment = Alignment.CenterVertically) {
+        if (coach && !stalled && sgs.any { s -> s?.up == true }) Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Ic.up, null, Modifier.size(16.dp), tint = p.ac); Spacer(Modifier.width(6.dp)); Txt("Heavier weight suggested: you hit your reps last time", size = 14.sp, color = p.ac)
         }
         // header
@@ -320,21 +326,16 @@ fun FinishScreen(st: AppState, f: Screen.Finish) {
     val prs = a.exercises.indices.sumOf { ei -> idx.livePrs(a, ei).values.sumOf { it.size } }
     val inc = a.exercises.sumOf { e -> e.sets.count { it.done != true } }
     val r = a.routineId?.let { st.data.routines[it] }
-    var whenText by remember { mutableStateOf(ldt(f.whenMs).let { d -> "${d.date} ${d.hour.toString().padStart(2, '0')}:${d.minute.toString().padStart(2, '0')}" }) }
     Column(Modifier.fillMaxSize()) {
         TopBar("Save workout", left = { IconBtn(Ic.left, "Back", { st.close(f) }) }, right = { Btn("Save", { st.saveWorkout(f) }, kind = BtnKind.Primary, small = true) })
         Body {
             BasicTextField(f.title, { f.title = it }, Modifier.fillMaxWidth().padding(vertical = 8.dp), singleLine = true,
                 textStyle = TextStyle(color = p.ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold), cursorBrush = SolidColor(p.ac))
             Divider()
-            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-                Stat("Duration", dur((parseNum(f.min) ?: 0.0).toLong() * 60000), Modifier.weight(1f)); Stat("Volume", wv(vol, lb), Modifier.weight(1f))
-                Stat("Sets", sets.toString(), Modifier.weight(1f)); Stat("Records", prs.toString(), Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Field("Started (YYYY-MM-DD HH:MM)", whenText, { t -> whenText = t; parseDate(t.replace(' ', 'T'))?.let { f.whenMs = it } }, Modifier.weight(1.4f))
-                Field("Duration (min)", f.min, { f.min = it }, Modifier.weight(1f), keyboard = androidx.compose.ui.text.input.KeyboardType.Number)
-            }
+            StatsCard(listOf("Duration" to dur((parseNum(f.min) ?: 0.0).toLong() * 60000), "Volume" to wvShort(vol, lb), "Sets" to sets.toString(), "Records" to prs.toString()),
+                Modifier.padding(vertical = 12.dp))
+            DateTimeFields(f.whenMs, withTime = true, onChange = { f.whenMs = it }, dateLabel = "Started")
+            Field("Duration (min)", f.min, { f.min = it }, keyboard = androidx.compose.ui.text.input.KeyboardType.Number)
             Field("Notes", f.notes, { f.notes = it }, placeholder = "How did it go?", singleLine = false, minLines = 3)
             if (r != null) Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Txt("Update “${r.name}” routine with these sets", Modifier.weight(1f), size = 15.sp); Toggle(f.upd) { f.upd = !f.upd }

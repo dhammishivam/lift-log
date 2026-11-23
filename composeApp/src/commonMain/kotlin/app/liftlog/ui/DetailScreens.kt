@@ -34,10 +34,8 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
         Body {
             Txt(w.title, size = 24.sp, weight = FontWeight.SemiBold)
             Mu("${dLong(w.start)} · ${tShort(w.start)}", size = 15.sp)
-            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-                Stat("Time", dur(w.end - w.start), Modifier.weight(1f)); Stat("Volume", wv(idx.wVol(w), lb), Modifier.weight(1f))
-                Stat("Sets", idx.wSets(w).toString(), Modifier.weight(1f)); Stat("Records", pm.n.toString(), Modifier.weight(1f))
-            }
+            StatsCard(listOf("Time" to dur(w.end - w.start), "Volume" to wvShort(idx.wVol(w), lb), "Sets" to idx.wSets(w).toString(), "Records" to pm.n.toString()),
+                Modifier.padding(vertical = 12.dp))
             if (cmp.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) { Icon(Ic.dumb, null, Modifier.size(18.dp), tint = p.mu); Spacer(Modifier.width(8.dp)); Mu(cmp, size = 15.sp) }
             val recs = workoutRecords(idx, w, lb)
             if (recs.isNotEmpty()) RecordList(recs)
@@ -83,12 +81,13 @@ private fun workoutMenu(st: AppState, s: Screen.WorkoutDetail, w: Workout) {
 @Composable
 fun ExercisesTab(st: AppState) {
     val idx = st.idx; val q = st.exq.trim().lowercase()
-    val all = idx.ex.values.filter { q.isEmpty() || it.name.lowercase().contains(q) || it.muscle.lowercase().contains(q) }
+    val all = idx.ex.values.filter { (st.exg == "All" || (GROUP[it.muscle] ?: "Other") == st.exg) && (q.isEmpty() || it.name.lowercase().contains(q) || it.muscle.lowercase().contains(q)) }
     val done = all.filter { idx.h[it.id] != null }.sortedByDescending { idx.h[it.id]!![0].start }
     val rest = all.filter { idx.h[it.id] == null }.sortedBy { it.name }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
         item { SearchBox(st.exq, "Search exercises") { st.exq = it } }
-        if (all.isEmpty()) item { Mu("No exercise matches “${st.exq}”.", Modifier.padding(12.dp)) }
+        item { ChipRow { CHIPS.forEach { c -> Chip(c, st.exg == c) { st.exg = c } } } }
+        if (all.isEmpty()) item { Mu(if (st.exq.isBlank()) "No ${st.exg.lowercase()} exercises." else "No exercise matches “${st.exq}”.", Modifier.padding(12.dp)) }
         if (done.isNotEmpty()) { item { Label("Performed") }; items(done, key = { "d" + it.id }) { x -> ExRow(st, x, false) { st.push(Screen.ExerciseDetail(x.id)) } } }
         if (rest.isNotEmpty()) { item { Label(if (done.isNotEmpty()) "Not yet performed" else "All exercises") }; items(rest, key = { "r" + it.id }) { x -> ExRow(st, x, false) { st.push(Screen.ExerciseDetail(x.id)) } } }
         item { Btn("Create custom exercise", { st.push(Screen.ExEditor(null)) }, Modifier.fillMaxWidth().padding(top = 14.dp), icon = Ic.plus) }

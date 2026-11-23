@@ -102,7 +102,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .bd{flex:1;overflow-y:auto;padding:12px 16px 48px;overscroll-behavior:contain}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 16px;border-bottom:1px solid var(--ln)}
 .stats.s4{grid-template-columns:repeat(4,minmax(0,1fr));padding:12px 0;border:0}
-.pst{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:16px;padding:14px 0;border-radius:16px;background:var(--s1)}.pst>div{text-align:center;padding:0 4px;min-width:0}.pst>div+div{border-left:1px solid var(--ln)}.pst b{display:block;font:600 19px/1.2 var(--num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pst small{font-size:12px;color:var(--mu)}
+.pst{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:16px;padding:14px 0;border-radius:16px;background:var(--s1)}.pst>div{text-align:center;padding:0 4px;min-width:0}.pst>div+div{border-left:1px solid var(--ln)}.pst b{display:block;font:600 clamp(15px,4.6vw,19px)/1.2 var(--num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pst small{font-size:12px;color:var(--mu)}
 .stats small{display:block;font-size:13px;color:var(--mu)}
 .stats b{font:600 22px/1.15 var(--num);white-space:nowrap}
 .stats .ac{color:var(--ac)}
@@ -621,9 +621,11 @@ function setProblem(type,s){const m=(REQUIRED[type]||REQUIRED.wr).find(([f])=>!(
 const fv=(s,f)=>{if(!s)return'';if(f==='min')return s.sec==null?'':r2(s.sec/60);if(f==='kg')return s.kg==null?'':r2(toU(s.kg));const v=s[f];return v==null?'':v};
 const setF=(s,f,v)=>{if(f==='min')s.sec=v==null?null:Math.round(v*60);else if(f==='kg')s.kg=v==null?null:Math.round(fromU(v)*1000)/1000;else s[f]=v};
 const fmtSet=(t,s)=>{if(!s)return'';const kg=fmtN(toU(s.kg||0)),u=UNIT(),r=s.reps??0,q=s.rpe?` @${s.rpe}`:'';switch(t){case'wbw':return`+${kg} ${u} × ${r}${q}`;case'bw':return`${r} reps${q}`;case'dur':return fmtSec(s.sec);case'cd':return`${fmtN(s.km||0)} km · ${fmtSec(s.sec)}`;default:return`${kg} ${u} × ${r}${q}`}};
-const setM=s=>{const kg=s.kg||0,r=s.reps||0;return{w:kg,orm:r?(r===1?kg:kg*(1+r/30)):0,vol:kg*r,reps:r,sec:s.sec||0,km:s.km||0}};
+const setM=s=>{const kg=s.kg||0,r=s.reps||0;return{w:kg,orm:r?(r===1?kg:kg*(1+Math.min(r,12)/30)):0,vol:kg*r,reps:r,sec:s.sec||0,km:s.km||0}};
 const isVol=t=>t==='wr'||t==='wbw';
 const LB=2.20462262;const UNIT=()=>(S.docs.settings&&S.docs.settings.unit)==='lb'?'lb':'kg';
+const pst=a=>`<div class="pst">${a.map(([l,v])=>`<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>`;
+const durS=ms=>ms>=36e6?fmtN(Math.round(ms/36e5))+' h':dur(ms);
 const cN=v=>v<1e4?fmtN(Math.round(v)):v<1e6?fmtN(Math.round(v/100)/10)+'k':fmtN(Math.round(v/1e5)/10)+'M';
 const toU=kg=>UNIT()==='lb'?kg*LB:kg,fromU=v=>UNIT()==='lb'?v/LB:v;
 const Wt=kg=>`${fmtN(toU(kg||0))} ${UNIT()}`,Wv=kg=>`${fmtN(Math.round(toU(kg||0)))} ${UNIT()}`;
@@ -705,7 +707,7 @@ function liveStats(m){let vol=0,sets=0;m.exercises.forEach(it=>{const t=ex(it.ei
 const lastRest=eid=>{const h=(H[eid]||[]).find(e=>e.rest!=null&&!(e.w.src==='hevy'&&!e.rest));return h?h.rest:settings().rest};
 
 /* ---------- UI state, sheets, dialogs ---------- */
-const UI={tab:TABS.includes(location.hash.slice(1))?location.hash.slice(1):'workout',hm:'dur',wsel:11,exq:'',mk:'weight_kg',mr:'All',hv:'list',cm:0,mu:'30',fold:{},rp:'month',ro:0};
+const UI={tab:TABS.includes(location.hash.slice(1))?location.hash.slice(1):'workout',hm:'dur',wsel:11,exq:'',exg:'All',mk:'weight_kg',mr:'All',hv:'list',cm:0,mu:'30',fold:{},rp:'month',ro:0};
 const SH=[];const repaintSet=()=>SH.forEach(x=>x.kind==='set'&&paint(x));const EDITOR={live:1,rt:1,fin:1,newex:1,set:1,pick:1,mn:1,meas:1,plate:1,orm:1,pin:1,coach:1};
 const R={};
 function openSheet(kind,st={}){const el=document.createElement('div');el.className='sheet'+(kind==='mn'?' dlg':'');document.body.appendChild(el);const sh={kind,st,el};SH.push(sh);paint(sh);return sh}
@@ -744,7 +746,7 @@ function profileHead(){const nm=(settings().name||'').trim(),since=WS.length?WS[
   const name=UI.pedit?`<div class="pname"><input data-f="pname" value="${esc(nm)}" placeholder="Your name" aria-label="Your name"><button class="btn sm pri" data-a="pnameSave">Save</button></div>`
     :`<button class="pnm ${nm?'':'mu'}" data-a="pnameEdit">${nm?esc(nm):'Add your name'}</button><small class="mu">${since?'Training since '+new Date(since).toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Your training, all in one place'}</small>`;
   return`<div class="prof"><div class="pav">${nm?esc(nm[0].toUpperCase()):I.user}</div><div class="pinfo">${name}</div></div>
-  <div class="pst">${[['Workouts',cN(tot.n)],['Hours',tot.t>=36e6?fmtN(Math.round(tot.t/36e5)):dur(tot.t)],['Volume',cN(toU(tot.v))+' '+UNIT()],['Records',cN(tot.p)]].map(([l,v])=>`<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>
+  <div class="pst">${[['Workouts',cN(tot.n)],['Time',durS(tot.t)],['Volume',cN(toU(tot.v))+' '+UNIT()],['Records',cN(tot.p)]].map(([l,v])=>`<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>
   <p class="mh">Dashboard</p><div class="dash">${[['rep','Statistics',I.chart],['mus','Muscles',I.dumb],['cal','Calendar',I.cal],['body','Measures',I.ruler]].map(([k,l,i])=>`<button data-a="${k==='body'?'tab':'hv'}" ${k==='body'?'data-t="body"':`data-v="${k}"`}>${i}<b>${l}</b></button>`).join('')}</div>`}
 function vHistory(){
   if(UI.hv!=='list'){const t={cal:'Calendar',mus:'Muscles',rep:'Statistics'}[UI.hv];return`<button class="btn sm" data-a="hv" data-v="list" style="margin:6px 0 10px">${I.left} Profile</button><h2 class="h3" style="margin-top:0">${t}</h2>`+(UI.hv==='cal'?vCal():UI.hv==='mus'?vMus():vRep())}
@@ -847,7 +849,7 @@ function vRep(){const now=new Date();let a,b,pa,label;
   return head+`<div class="rgrid" style="margin-top:12px"><div><small>Workouts</small><b>${c.n}</b><span>${dl(c.n,o.n,x=>x)}</span></div><div><small>Time</small><b>${dur(c.t)}</b><span>${dl(c.t,o.t,dur)}</span></div><div><small>Volume</small><b>${Wv(c.v)}</b><span>${dl(c.v,o.v,Wv)}</span></div><div><small>Sets</small><b>${c.s}</b><span>${dl(c.s,o.s,x=>x)}</span></div><div><small>Records</small><b>${c.p}</b><span>${dl(c.p,o.p,x=>x)}</span></div><div><small>Days trained</small><b>${c.d}</b><span>avg ${dur(c.t/c.n)} a session</span></div></div>
   ${compare(c.v)?`<p class="cmp" style="margin-top:12px">${I.dumb}${compare(c.v)} lifted in total</p>`:''}
   ${gains.length?`<h3 class="h3">Biggest strength gains</h3>${gains.map(x=>`<div class="mb" style="grid-template-columns:minmax(0,1fr) auto"><span>${esc(ex(x.e).name)}<small>Est. 1RM ${Wt(Math.round(x.bef*10)/10)} → ${Wt(Math.round(x.now1*10)/10)}</small></span><b>+${Math.round(x.g*1000)/10}%</b></div>`).join('')}`:''}
-  <h3 class="h3">Most-trained muscles</h3>${top(mus,6).map(([m,v])=>`<div class="mb" style="grid-template-columns:minmax(0,1fr) auto"><span>${esc(m)}</span><b>${v} sets</b></div>`).join('')}
+  <h3 class="h3">Most-trained muscles</h3>${top(regionSets(cw),6).map(([m,v])=>`<div class="mb" style="grid-template-columns:minmax(0,1fr) auto"><span>${esc(m)}</span><b>${sl(v)} sets</b></div>`).join('')}
   <h3 class="h3">Most-done exercises</h3>${top(exs,5).map(([e,v])=>`<div class="mb" style="grid-template-columns:minmax(0,1fr) auto"><span>${esc(ex(e).name)}</span><b>${v}×</b></div>`).join('')}`}
 function ago(ms){const h=Math.floor(ms/36e5);return h<1?'just now':h<24?h+' h ago':h<48?'yesterday':Math.floor(h/24)+' days ago'}
 function vMus(){const mode=UI.mmode||'vol',sel=UI.msel,last=lastTrained(),now=Date.now();
@@ -880,12 +882,12 @@ function wCard(w){const pm=PRM[w.id]||{n:0},ex4=w.exercises.slice(0,4);
   return`<button class="wc" data-a="wopen" data-id="${w.id}"><h3>${esc(w.title)}</h3><div class="d">${dLong(w.start)} · ${tShort(w.start)}</div>
   <div class="wst"><div><small>Time</small><b>${dur(w.end-w.start)}</b></div><div><small>Volume</small><b>${Wv(wVol(w))}</b></div>${pm.n?`<div><small>Records</small><b><span class="tr">${I.trophy}</span>${pm.n}</b></div>`:''}</div>
   <ul>${ex4.map(it=>`<li><span>${it.sets.length} × ${esc(ex(it.eid).name)}</span><span>${esc(bestSet(it))}</span></li>`).join('')}${w.exercises.length>4?`<li class="mu">+${w.exercises.length-4} more exercise${w.exercises.length-4>1?'s':''}</li>`:''}</ul></button>`}
-function vExercises(){return`<div class="search">${I.search}<input id="exq" data-f="exq" placeholder="Search exercises" value="${esc(UI.exq)}" autocomplete="off" aria-label="Search exercises"></div><div id="exlist">${exListHTML()}</div><button class="btn wide" style="margin-top:14px" data-a="newEx">${I.plus} Create custom exercise</button>`}
+function vExercises(){return`<div class="search">${I.search}<input id="exq" data-f="exq" placeholder="Search exercises" value="${esc(UI.exq)}" autocomplete="off" aria-label="Search exercises"></div><div class="chips" style="margin-top:10px">${CHIPS.map(c=>`<button class="chip ${(UI.exg||'All')===c?'on':''}" data-a="exg" data-k="${c}">${c}</button>`).join('')}</div><div id="exlist">${exListHTML()}</div><button class="btn wide" style="margin-top:14px" data-a="newEx">${I.plus} Create custom exercise</button>`}
 const initials=n=>n.replace(/\(.*?\)/g,'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 function xRow(x,act,sel){const h=H[x.id];return`<button class="xr ${sel?'sel':''}" data-a="${act}" data-id="${x.id}"><span class="xa">${sel?I.check:esc(initials(x.name))}</span><span class="t"><b>${esc(x.name)}</b><small>${esc(x.muscle)} · ${esc(x.equip)}${x.custom?' · custom':''}</small></span>${h?`<span class="r">${h.length} session${h.length>1?'s':''}<br>${dShort(h[0].start)}</span>`:''}</button>`}
-function exListHTML(){const q=UI.exq.trim().toLowerCase();const all=Object.values(EX).filter(x=>!q||x.name.toLowerCase().includes(q)||x.muscle.toLowerCase().includes(q));
+function exListHTML(){const q=UI.exq.trim().toLowerCase(),g=UI.exg||'All';const all=Object.values(EX).filter(x=>(g==='All'||(GROUP[x.muscle]||'Other')===g)&&(!q||x.name.toLowerCase().includes(q)||x.muscle.toLowerCase().includes(q)));
   const done=all.filter(x=>H[x.id]).sort((a,b)=>H[b.id][0].start-H[a.id][0].start),rest=all.filter(x=>!H[x.id]).sort((a,b)=>a.name.localeCompare(b.name));
-  if(!all.length)return`<p class="mu" style="padding:12px 2px">No exercise matches “${esc(UI.exq)}”.</p>`;
+  if(!all.length)return`<p class="mu" style="padding:12px 2px">${UI.exq.trim()?`No exercise matches “${esc(UI.exq)}”.`:`No ${g.toLowerCase()} exercises.`}</p>`;
   return(done.length?`<p class="mh" style="margin-top:6px">Performed</p>${done.map(x=>xRow(x,'exopen')).join('')}`:'')+(rest.length?`<p class="mh">${done.length?'Not yet performed':'All exercises'}</p>${rest.map(x=>xRow(x,'exopen')).join('')}`:'')}
 
 /* ---------- exercise cards (live workout + routine editor) ---------- */
@@ -894,12 +896,12 @@ function ssInfo(m){const o=[];m.exercises.forEach(e=>{if(e.ss!=null&&!o.includes
 function normSS(m){const c={};m.exercises.forEach(e=>{if(e.ss!=null)c[e.ss]=(c[e.ss]||0)+1});m.exercises.forEach((e,i)=>{const nx=m.exercises[i+1],pv=m.exercises[i-1];if(e.ss!=null&&(c[e.ss]<2||!((nx&&nx.ss===e.ss)||(pv&&pv.ss===e.ss))))delete e.ss})}
 function cards(m,mode){const si=ssInfo(m);return m.exercises.map((it,ei)=>card(m,it,ei,mode,si(it.ss))).join('')}
 function card(m,it,ei,mode,ssi){const x=ex(it.eid),T=TYPES[x.type]||TYPES.wr,live=mode!=='rt',tm=live&&x.type==='dur',cls=(T.f.length===1?'c1 ':'')+(live?'':'rt')+(tm?' tm':''),pin=pinOf(it.eid);
-  const prev=prevSets(it.eid,m.start||Date.now(),m.editId);let n=0,up=false;
+  const prev=prevSets(it.eid,m.start||Date.now(),m.editId),coach=live&&!m.editId,stl=coach&&stalled(it.eid);let n=0,up=false;
   const rows=it.sets.map((s,si)=>{const lab=s.t==='n'?++n:s.t.toUpperCase(),pv=prevFor(prev,it.sets,si),sg=live&&!s.done?sugFor(m,it,si):null;if(sg&&sg.up)up=true;
     const run=TMR&&TMR.m===m&&TMR.ei===ei&&TMR.si===si;return`<div class="row ${cls} ${live&&s.done?'done':''} ${s.pr?'pr':''} ${run?'run':''}" data-ei="${ei}" data-si="${si}"><button class="sl t-${s.t}" data-a="settype" data-ei="${ei}" data-si="${si}" aria-label="Set ${lab} type">${lab}${s.rpe?`<small>@${s.rpe}</small>`:''}</button><button class="pv" data-a="usepv" data-ei="${ei}" data-si="${si}"><span>${pv?esc(fmtSet(x.type,pv)):'—'}</span><i class="tr" title="Personal record">${I.trophy}</i></button>${T.f.map((f,k)=>`<input data-f="${f}" data-ei="${ei}" data-si="${si}" class="${sg&&fv(sg,f)!==''?'sg':''}" inputmode="${f==='reps'||f==='sec'?'numeric':'decimal'}" enterkeyhint="next" autocomplete="off" value="${fv(s,f)}" placeholder="${esc(phv(it,si,f,pv,sg))}" aria-label="${hdr(x.type,f,T.h[k])}">`).join('')}${tm?`<button class="chk tb" data-a="tmr" data-ei="${ei}" data-si="${si}" aria-label="${run?'Stop timer':'Start timer'}">${run?I.stop:I.play}</button>`:''}${live?`<button class="chk" data-a="check" data-ei="${ei}" data-si="${si}" aria-label="Complete set">${I.check}</button>`:''}</div>`}).join('');
-  return`<section class="card${ssi?' ssc':''}"${ssi?` style="--sc:${ssi.c}"`:''}>${ssi?`<span class="sst">Superset ${ssi.L}</span>`:''}<div class="ch"><button class="exn" data-a="exinfo" data-id="${x.id}">${esc(x.name)}</button><button class="ib" data-a="exmenu" data-ei="${ei}" aria-label="Exercise options">${I.dots}</button></div>${pin?`<p class="pin">${I.pin}<span>${esc(pin)}</span></p>`:''}${live&&stalled(it.eid)?`<p class="stl">${I.warn} No progress in 4 weeks. Try a lighter deload week or a variation.</p>`:''}
+  return`<section class="card${ssi?' ssc':''}"${ssi?` style="--sc:${ssi.c}"`:''}>${ssi?`<span class="sst">Superset ${ssi.L}</span>`:''}<div class="ch"><button class="exn" data-a="exinfo" data-id="${x.id}">${esc(x.name)}</button><button class="ib" data-a="exmenu" data-ei="${ei}" aria-label="Exercise options">${I.dots}</button></div>${pin?`<p class="pin">${I.pin}<span>${esc(pin)}</span></p>`:''}${coach&&stl?`<p class="stl">${I.warn} No progress in 4 weeks. Try a lighter deload week or a variation.</p>`:''}
   <input class="note" data-f="note" data-ei="${ei}" placeholder="Add notes here…" value="${esc(it.note||'')}" aria-label="Exercise notes">
-  <button class="rest" data-a="rest" data-ei="${ei}">${I.clock} Rest timer: ${fmtRest(it.rest)}</button>${up?`<p class="sgn">${I.up} Heavier weight suggested: you hit your reps last time</p>`:''}
+  <button class="rest" data-a="rest" data-ei="${ei}">${I.clock} Rest timer: ${fmtRest(it.rest)}</button>${coach&&!stl&&up?`<p class="sgn">${I.up} Heavier weight suggested: you hit your reps last time</p>`:''}
   <div class="row th ${cls}"><span>Set</span><span>Previous</span>${T.h.map((h,k)=>`<span>${hdr(x.type,T.f[k],h)}</span>`).join('')}${tm?'<span>Timer</span>':''}${live?`<span>${I.check}</span>`:''}</div>${rows}
   <div class="addrow"><button class="add" data-a="addset" data-ei="${ei}">${I.plus} Add set</button>${isVol(x.type)&&!it.sets.some(q=>q.t==='w'||q.done)?`<button class="add wu" data-a="wuq" data-ei="${ei}">${I.up} Warm-up</button>`:''}</div></section>`}
 const phv=(it,si,f,pv,sg)=>{if(sg&&fv(sg,f)!=='')return fv(sg,f);const s=it.sets[si];if(fv(s.p,f)!=='')return fv(s.p,f);if(fv(pv,f)!=='')return fv(pv,f);
@@ -957,7 +959,7 @@ const defTitle=()=>{const h=new Date().getHours();return h<12?'Morning workout':
 R.fin=st=>{const m=A,s=liveStats(m);let inc=0,pr=0;m.exercises.forEach(it=>it.sets.forEach(x=>{if(!x.done)inc++;if(x.done&&x.pr)pr+=x.pr.length}));const r=m.routineId&&S.docs[m.routineId];
   return`<div class="hd"><button class="ib" data-a="close" aria-label="Back">${I.left}</button><h2>Save workout</h2><button class="btn pri sm" data-a="fsave">Save</button></div>
   <div class="bd"><input class="titlein" data-f="ftitle" value="${esc(st.title)}" aria-label="Workout title">
-  <div class="stats s4"><div><small>Duration</small><b>${dur(st.min*60000)}</b></div><div><small>Volume</small><b>${Wv(s.vol)}</b></div><div><small>Sets</small><b>${s.sets}</b></div><div><small>Records</small><b>${pr}</b></div></div>
+  ${pst([['Duration',dur(st.min*60000)],['Volume',cN(toU(s.vol))+' '+UNIT()],['Sets',s.sets],['Records',pr]])}
   ${recBox(aRecs(m))}${musclesWorked(regionSetsOf(m.exercises,true))}
   <div class="two"><label class="fld"><span>Started</span><input type="datetime-local" data-f="fwhen" value="${toLocalInput(st.when)}"></label><label class="fld"><span>Duration (min)</span><input inputmode="numeric" data-f="fmin" value="${st.min}"></label></div>
   <label class="fld"><span>Notes</span><textarea data-f="fnotes" placeholder="How did it go?">${esc(st.notes)}</textarea></label>
@@ -1008,7 +1010,7 @@ R.wd=st=>{const w=S.docs[st.id];if(!w)return`<div class="hd"><button class="ib" 
   const pm=PRM[w.id]||{n:0,m:{}},ssi=ssInfo(w),cmp=compare(wVol(w));
   return`<div class="hd"><button class="ib" data-a="close" aria-label="Back">${I.left}</button><h2>Workout</h2><button class="ib" data-a="wmenu" data-id="${w.id}" aria-label="Workout options">${I.dots}</button></div>
   <div class="bd"><div class="wh"><h2>${esc(w.title)}</h2><div class="mu">${dLong(w.start)} · ${tShort(w.start)}</div></div>
-  <div class="stats s4"><div><small>Time</small><b>${dur(w.end-w.start)}</b></div><div><small>Volume</small><b>${Wv(wVol(w))}</b></div><div><small>Sets</small><b>${wSets(w)}</b></div><div><small>Records</small><b>${pm.n}</b></div></div>
+  ${pst([['Time',dur(w.end-w.start)],['Volume',cN(toU(wVol(w)))+' '+UNIT()],['Sets',wSets(w)],['Records',pm.n]])}
   ${cmp?`<p class="cmp">${I.dumb}${cmp}</p>`:''}${recBox(wRecs(w))}<button class="btn sm" style="margin:6px 0 4px" data-a="share" data-id="${w.id}">${I.share} Share</button>${musclesWorked(regionSetsOf(w.exercises))}${w.notes?`<p>${esc(w.notes)}</p>`:''}
   ${w.exercises.map((it,ei)=>{const x=ex(it.eid),q=ssi(it.ss);let n=0;return`<div class="wdx${q?' card ssc':''}"${q?` style="--sc:${q.c}"`:''}>${q?`<span class="sst">Superset ${q.L}</span>`:''}<button class="exn" data-a="exinfo" data-id="${x.id}">${esc(x.name)}</button>${it.note?`<p class="note2">${esc(it.note)}</p>`:''}<div>${it.sets.map((s,si)=>{const p=pm.m[ei+':'+si];return`<div class="sr"><span class="n t-${s.t}">${s.t==='n'?++n:s.t.toUpperCase()}</span><span>${esc(fmtSet(x.type,s))}</span>${p?`<span class="prt">${I.trophy}${p.map(k=>PRS[k]).join(' · ')}</span>`:'<span></span>'}</div>`}).join('')}</div></div>`}).join('')}</div>`};
 
@@ -1484,7 +1486,7 @@ R.plate=st=>`<div class="hd"><button class="ib" data-a="close" aria-label="Close
 function ormRes(st){const w=num(st.w),r=num(st.r),u=UNIT();if(!w||!r)return'<p class="mu">Enter a weight and how many reps you did with it.</p>';if(r>30)return'<p class="mu">Estimates get unreliable past 30 reps.</p>';
   const r1=x=>Math.round(x*10)/10,ep=r===1?w:w*(1+r/30),br=r===1?w:w*36/(37-r),one=(ep+br)/2;
   return`<div class="big1">${fmtN(r1(one))} ${u}</div><div class="mu" style="font-size:14px">Estimated one-rep max · average of Epley (${fmtN(r1(ep))}) and Brzycki (${fmtN(r1(br))})</div>
-  <table class="pt"><thead><tr><th>% of 1RM</th><th>Weight</th><th>About</th></tr></thead><tbody>${[100,95,90,85,80,75,70,65,60,55,50].map(p=>`<tr><td>${p}%</td><td>${fmtN(r1(one*p/100))} ${u}</td><td>${p===100?1:Math.max(1,Math.round(30*(100/p-1)))} reps</td></tr>`).join('')}</tbody></table>`}
+  <table class="pt"><thead><tr><th>% of 1RM</th><th>Weight</th><th>About</th></tr></thead><tbody>${[100,95,90,85,80,75,70,65,60,55,50].map(p=>`<tr><td>${p}%</td><td>${fmtN(r1(one*p/100))} ${u}</td><td>${(n=>n===1?'1 rep':n+' reps')(p===100?1:Math.max(1,Math.round(30*(100/p-1))))}</td></tr>`).join('')}</tbody></table>`}
 R.orm=st=>`<div class="hd"><button class="ib" data-a="close" aria-label="Close">${I.x}</button><h2>1RM calculator</h2><span style="width:44px"></span></div>
   <div class="bd"><div class="two"><label class="fld"><span>Weight (${UNIT()})</span><input data-f="ow" inputmode="decimal" value="${esc(st.w??'')}" autocomplete="off"></label><label class="fld"><span>Reps</span><input data-f="or" inputmode="numeric" value="${esc(st.r??'')}" autocomplete="off"></label></div><div id="ores">${ormRes(st)}</div></div>`;
 const repart=(sh,sel,html)=>{const e=sh.el.querySelector(sel);if(e)e.innerHTML=html};
@@ -1536,7 +1538,7 @@ async function buildRoutines(){const rs=routinesFromHistory();if(!rs.length){toa
 /* ---------- settings, import, backup ---------- */
 /* ---------- Move from Hevy guide ---------- */
 function hevySteps(){const hw=WS.filter(w=>w.src==='hevy').length;return[
-  {id:'export',t:'Export your data from Hevy',p:'In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this device can reach them. Do this before your Hevy subscription ends.'},
+  {id:'export',auto:hw>0||MS.length>0,t:'Export your data from Hevy',p:'In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this device can reach them. Do this before your Hevy subscription ends.'},
   {id:'import',auto:hw>0&&MS.length>0,only:!hw,t:'Import both files here',p:hw&&MS.length?`${cnt(hw,'Hevy workout')} and ${cnt(MS.length,'measurement entry','measurement entries')} are in Lift Log. Importing the same file again won't create duplicates.`:hw?`Workouts are in (${cnt(hw,'Hevy workout')}). Now import the measurements file. If you never logged measurements in Hevy, mark this step as done.`:MS.length?`Measurements are in (${cnt(MS.length,'entry','entries')}). Now import the workouts file.`:'Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.'},
   {id:'units',t:'Check your units',p:"Hevy's export is always in kg. Lift Log converts on screen, so pick what you lift in."},
   {id:'routines',auto:RS.length>0,only:true,t:'Get your routines back',p:RS.length?`You have ${RS.length} routine${RS.length===1?'':'s'}. Edit them from the Workout tab to set rep targets, rest timers and folders.`:"Hevy's export doesn't include saved routines. Lift Log rebuilds one for each workout name you used 3+ times in the last 4 months, from its latest session. You can also create them by hand."},
@@ -1721,6 +1723,7 @@ document.addEventListener('click',async e=>{
   case'cm':UI.cm=Math.min(0,UI.cm+ +d.d);renderMain();break;
   case'cday':{const ids=d.ids.split(',');if(ids.length===1){openSheet('wd',{id:ids[0]});break}const v=await menu('Workouts that day',ids.map(id=>({l:(S.docs[id]||{}).title||'Workout',v:id})));if(v)openSheet('wd',{id:v});break}
   case'mu':UI.mu=d.k;renderMain();break;
+  case'exg':UI.exg=d.k;renderMain();break;
   case'unit':put('settings',{...settings(),kind:'settings',unit:d.u});refresh();paint(sh);{const l=liveSheet();if(l)paint(l)}break;
   case'sugT':put('settings',{...settings(),kind:'settings',sug:settings().sug===false});paint(sh);{const l=liveSheet();if(l)paint(l)}break;
   case'celeT':put('settings',{...settings(),kind:'settings',cele:settings().cele===false});paint(sh);break;

@@ -29,7 +29,9 @@ private fun steps(st: AppState): List<Step> {
         Step("export", "Export your data from Hevy",
             if (st.platform.receivesShares)
                 "Open Hevy opens your Hevy profile. Tap the gear icon → Export & Import Data → Export Data. Tap Export Workouts and pick Lift Log in the list that opens: the import starts by itself and you'll land back here. Then do the same for Export Measurements. If Hevy saves the file instead, open it from Files or Downloads with Lift Log, or use Choose files below."
-            else "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this browser can reach them. Do this before your Hevy subscription ends."),
+            else "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this browser can reach them. Do this before your Hevy subscription ends.",
+            // Anything from Hevy already here means the export happened.
+            auto = hevyWorkouts > 0 || idx.ms.isNotEmpty()),
         // Done only once both files are in: workouts and measurements. If someone never logged measurements in Hevy,
         // they can mark it done themselves.
         Step("import", "Import both files here",

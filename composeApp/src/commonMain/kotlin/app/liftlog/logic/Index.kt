@@ -10,7 +10,8 @@ data class SetMetrics(val w: Double, val orm: Double, val vol: Double, val reps:
 }
 fun setM(s: WSet): SetMetrics {
     val kg = s.kg ?: 0.0; val r = s.reps ?: 0.0
-    val orm = if (r > 0) (if (r == 1.0) kg else kg * (1 + r / 30)) else 0.0
+    // Epley; past 12 reps the estimate runs away (20 kg × 30 would claim a 40 kg max), so higher sets count as 12.
+    val orm = if (r > 0) (if (r == 1.0) kg else kg * (1 + minOf(r, 12.0) / 30)) else 0.0
     return SetMetrics(kg, orm, kg * r, r, s.sec ?: 0.0, s.km ?: 0.0)
 }
 fun isVol(t: String) = t == "wr" || t == "wbw"

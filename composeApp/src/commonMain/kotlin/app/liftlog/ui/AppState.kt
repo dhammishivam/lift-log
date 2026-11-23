@@ -64,6 +64,8 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
     var toast by mutableStateOf<ToastMsg?>(null)
     var now by mutableStateOf(nowMs())
     var restEnd by mutableStateOf(0L)
+    /** Index of the first exercise just added to the live workout, so the screen can bring it into view. */
+    var focusEx by mutableStateOf<Int?>(null)
     var restTotal by mutableStateOf(1L)
     var timer by mutableStateOf<SetTimer?>(null)
     var celebration by mutableStateOf<Celebration?>(null)
@@ -72,7 +74,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
     // tab view state
     var hv by mutableStateOf("list"); var hm by mutableStateOf("dur"); var wsel by mutableStateOf(11)
     var cm by mutableStateOf(0); var mu by mutableStateOf(30); var rp by mutableStateOf("month"); var ro by mutableStateOf(0)
-    var exq by mutableStateOf(""); var mk by mutableStateOf("weight_kg"); var mr by mutableStateOf("All")
+    var exq by mutableStateOf(""); var exg by mutableStateOf("All"); var mk by mutableStateOf("weight_kg"); var mr by mutableStateOf("All")
     val fold = mutableStateMapOf<String, Boolean>()
     var importStatus by mutableStateOf("")
 

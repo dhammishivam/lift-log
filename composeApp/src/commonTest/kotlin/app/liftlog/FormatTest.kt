@@ -63,4 +63,15 @@ class FormatTest {
         val sets = listOf(set(40.0, 10.0, t = "w"), set(80.0, 8.0), set(80.0, 8.0), set(60.0, 10.0, t = "d"))
         assertEquals(listOf("W", "1", "2", "D"), sets.indices.map { setLabel(sets, it) })
     }
+
+    @Test fun shortTotalsFitTightSpaces() {
+        assertEquals("9,950", compactN(9950.0)); assertEquals("259.7k", compactN(259_700.0)); assertEquals("2.6M", compactN(2_597_308.0))
+        assertEquals("2.6M kg", wvShort(2_597_308.0, false))
+        assertEquals("300 h", durShort(300 * 3_600_000L + 60_000)); assertEquals("4h 12m", durShort((4 * 60 + 12) * 60_000L))
+    }
+
+    @Test fun oneRepMaxIgnoresRepsPastTwelve() {
+        assertEquals(28.0, setM(app.liftlog.model.WSet(kg = 20.0, reps = 30.0)).orm, 1e-9)
+        assertEquals(76.0, setM(app.liftlog.model.WSet(kg = 60.0, reps = 8.0)).orm, 1e-9)
+    }
 }
