@@ -81,7 +81,8 @@ fun LineChart(series: List<Series>, modifier: Modifier = Modifier.fillMaxWidth()
 
 /* ---------- body heat map: an original simple figure, front and back ---------- */
 /** Parsed body map paths (in a 200 × 420 box), built once. */
-private val SIL_P by lazy { BodyPaths.sil.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } }
+// Both halves in one path, so no hairline seam shows down the middle.
+private val SIL_P by lazy { listOf(androidx.compose.ui.graphics.Path().apply { BodyPaths.sil.forEach { d -> addPath(androidx.compose.ui.graphics.vector.PathParser().parsePathString(d).toPath()) } }) }
 private val FRONT_P by lazy { BodyPaths.front.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
 private val BACK_P by lazy { BodyPaths.back.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
 
