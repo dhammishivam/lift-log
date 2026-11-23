@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.printToString
 import app.liftlog.logic.nowMs
 import app.liftlog.model.*
@@ -97,7 +98,14 @@ class UiFlowsTest {
         error("'$text' never appeared\n${screen()}")
     }
     private fun gone(text: String) { repeat(40) { if (!has(text)) return; pump(100) }; error("'$text' is still showing") }
-    private fun click(n: SemanticsNodeInteraction) { runCatching { n.performScrollTo() }; n.performClick(); pump() }
+    /** Clicks through the node's click action, so off-screen nodes need no scrolling. performScrollTo starts a scroll
+     *  animation that never finishes with the frame clock paused, and then the next idle wait never returns. */
+    private fun click(n: SemanticsNodeInteraction) {
+        val node = n.fetchSemanticsNode()
+        if (androidx.compose.ui.semantics.SemanticsActions.OnClick in node.config) n.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        else n.performClick()
+        pump()
+    }
     private fun tap(text: String, last: Boolean = false, sub: Boolean = false) { see(text, sub); click(if (last) nodes(text, sub).onLast() else nodes(text, sub).onFirst()) }
     private fun tapDesc(desc: String) {
         for (i in 0 until 60) { if (rule.onAllNodesWithContentDescription(desc).fetchSemanticsNodes().isNotEmpty()) break; pump(100) }
@@ -105,7 +113,7 @@ class UiFlowsTest {
     }
     private fun type(field: Int, text: String) {
         val n = rule.onAllNodes(hasSetTextAction())[field]
-        runCatching { n.performScrollTo() }; n.performTextClearance(); n.performTextInput(text); pump(300)
+        n.performTextClearance(); n.performTextInput(text); pump(300)
     }
     private fun back() { rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; pump() }
 
@@ -229,9 +237,8 @@ class UiFlowsTest {
     }
 
     @Test fun poundsSwitchTapeMeasuresToInches() {
-        // Starts in lb rather than tapping the switch: under Robolectric that tap stalls the frame clock
-        // (the switch itself works on the phone, and the Settings tests cover the screen).
-        launch(Seed().settings(Settings(unit = "lb")))
+        launch()
+        tapDesc("Settings"); tap("lb"); back()
         tap("Body"); tap("Log measurements")
         see("Weight (lb)"); see("Waist (in)")
     }
