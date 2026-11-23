@@ -79,7 +79,9 @@ class ImportExportTest {
     @Test fun workoutCsvExportReimportsToTheSameSets() {
         val imported = parseHevyWorkouts(HEVY_WORKOUTS, empty)
         val idx = Index(Data(workouts = imported.workouts.associateBy { it.id }, customs = imported.customs.associateBy { it.id }))
-        val again = parseHevyWorkouts(csvWorkouts(idx), idx).workouts.sortedBy { it.start }
+        // Restoring the export on a new phone (no workouts yet) gives back the same sessions and sets.
+        val fresh = Index(Data(customs = imported.customs.associateBy { it.id }))
+        val again = parseHevyWorkouts(csvWorkouts(idx), fresh).workouts.sortedBy { it.start }
         val orig = imported.workouts.sortedBy { it.start }
         assertEquals(orig.map { it.title to it.start }, again.map { it.title to it.start })
         assertEquals(orig.flatMap { w -> w.exercises.map { it.eid to it.sets } }, again.flatMap { w -> w.exercises.map { it.eid to it.sets } })
