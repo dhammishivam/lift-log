@@ -916,6 +916,9 @@ function savePin(eid,t){const n={...((S.docs.pins||{}).n||{})};t=(t||'').trim();
 
 /* ---------- export ---------- */
 const MON3=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const cnt=(n,one,many=one+'s')=>`${n} ${n===1?one:many}`;
+const wKey=(t,st)=>String(t||'').trim().toLowerCase()+'|'+Math.floor(st/60000);
+const mProblem=(k,v)=>{const l=(MF.find(f=>f[0]===k)||[k,k])[1];const ok=k==='weight_kg'?v>=20&&v<=400:k==='fat_percent'?v>=1&&v<=75:k.endsWith('_in')?v>=2&&v<=100:v>=0;return ok?null:`${l} looks wrong. Check the number.`};
 const hevyDate=ms=>{const d=new Date(ms),z=n=>String(n).padStart(2,'0');return`${d.getDate()} ${MON3[d.getMonth()]} ${d.getFullYear()}, ${z(d.getHours())}:${z(d.getMinutes())}`};
 const cq=v=>`"${String(v??'').replace(/"/g,'""')}"`;
 function csvWorkouts(){const TT={n:'normal',w:'warmup',d:'dropset',f:'failure'},rows=[['title','start_time','end_time','description','exercise_title','superset_id','exercise_notes','set_index','set_type','weight_kg','reps','distance_km','duration_seconds','rpe'].map(cq).join(',')];
@@ -1039,7 +1042,7 @@ async function buildRoutines(){const rs=routinesFromHistory();if(!rs.length){toa
 /* ---------- Move from Hevy guide ---------- */
 function hevySteps(){const hw=WS.filter(w=>w.src==='hevy').length;return[
   {id:'export',t:'Export your data from Hevy',p:'In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files where this device can reach them. Do this before your Hevy subscription ends.'},
-  {id:'import',auto:hw>0,only:true,t:'Import both files here',p:hw?`${hw} Hevy workouts and ${MS.length} measurement entries are in Lift Log. Importing the same file again won't create duplicates.`:'Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.'},
+  {id:'import',auto:hw>0,only:true,t:'Import both files here',p:hw?`${cnt(hw,'Hevy workout')} and ${cnt(MS.length,'measurement entry','measurement entries')} are in Lift Log. Importing the same file again won't create duplicates.`:'Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.'},
   {id:'units',t:'Check your units',p:"Hevy's export is always in kg. Lift Log converts on screen, so pick what you lift in."},
   {id:'routines',auto:RS.length>0,only:true,t:'Get your routines back',p:RS.length?`You have ${RS.length} routine${RS.length===1?'':'s'}. Edit them from the Workout tab to set rep targets, rest timers and folders.`:"Hevy's export doesn't include saved routines. Lift Log rebuilds one for each workout name you used 3+ times in the last 4 months, from its latest session. You can also create them by hand."},
   {id:'prefs',t:'Match your Hevy settings',p:'Set the default rest timer and a weekly goal. Weight suggestions and keep-screen-on are in Settings too.'},
@@ -1067,7 +1070,7 @@ R.set=st=>`<div class="hd"><button class="ib" data-a="close" aria-label="Close">
   <div class="box"><h3>Import from Hevy</h3><p>Pick Hevy's workout export, its measurements export, or both. Your workouts also become routines (one per workout name you've used 3+ times in the last 4 months). Importing the same file twice doesn't create duplicates.</p><label class="file">Choose Hevy CSV files<input type="file" accept=".csv,text/csv" multiple data-f="hevy"></label><div class="st" id="impst">${esc(st.imp||'')}</div></div>
   <div class="box"><h3>Routines from history</h3><p>Turn each workout name you've used 3+ times in the last 4 months into a routine, built from its latest session. Names that already have a routine are skipped.</p><button class="btn" data-a="buildRt">Build routines</button></div>
   <div class="box"><h3>Export</h3><p>Workouts use Hevy's CSV format, so they open in Hevy, Strong or any spreadsheet. The full backup restores everything here.</p><div class="btns"><button class="btn" data-a="exw">Workouts CSV</button><button class="btn" data-a="exm">Measurements CSV</button><button class="btn" data-a="exb">Full backup</button></div></div>
-  <div class="box"><h3>Backup</h3><p>${WS.length} workouts, ${RS.length} routines, ${MS.length} measurement entries, ${Object.values(EX).filter(x=>x.custom).length} custom exercises. Photos stay on the page and aren't in the backup.</p><div class="btns"><button class="btn" data-a="copyjson">Copy backup</button><button class="btn" data-a="showrestore">Restore from backup</button></div>
+  <div class="box"><h3>Backup</h3><p>${cnt(WS.length,'workout')}, ${cnt(RS.length,'routine')}, ${cnt(MS.length,'measurement entry','measurement entries')}, ${cnt(Object.values(EX).filter(x=>x.custom).length,'custom exercise')}. Photos stay on the page and aren't in the backup.</p><div class="btns"><button class="btn" data-a="copyjson">Copy backup</button><button class="btn" data-a="showrestore">Restore from backup</button></div>
   ${st.json?`<label class="fld"><span>Backup JSON (select all and copy)</span><textarea readonly>${esc(st.json)}</textarea></label>`:''}
   ${st.restore?`<label class="fld"><span>Paste a backup</span><textarea data-f="rjson"></textarea></label><button class="btn pri" data-a="restore">Restore</button>`:''}</div>
   <p class="st">${MODE==='cloud'?'Saved to your Claude account, so it follows you across devices.':MODE==='local'?'Saving in this browser only. Open this page signed in to Claude to keep it in your account.':'Connecting…'}</p></div>`;
@@ -1086,13 +1089,14 @@ function parseHevy(text){const rows=parseCSV(text.replace(/^﻿/,''));if(rows.le
     let it=w._l;if(!it||it.eid!==eid){it={eid,note:g(iN),sets:[]};const sv=num(g(iSS));if(sv!=null)it.ss=sv;w.exercises.push(it);w._l=it}
     const s={t:TM[g(iST).toLowerCase()]||'n'};if(kg!=null)s.kg=kg;if(reps!=null)s.reps=reps;if(km!=null)s.km=km;if(sec!=null)s.sec=sec;const rp=num(g(iRpe));if(rp!=null)s.rpe=rp;it.sets.push(s)});
   const ws=[...W.values()].map(w=>{delete w._l;w.exercises=w.exercises.filter(i=>i.sets.length);return w}).filter(w=>w.exercises.length);
-  return{xs:Object.values(newX).filter(x=>!S.docs[x.id]),ws}}
+  const have=new Set(WS.map(w=>wKey(w.title,w.start))),fresh=ws.filter(w=>!S.docs[w.id]&&!have.has(wKey(w.title,w.start))),used=new Set(fresh.flatMap(w=>w.exercises.map(i=>i.eid)));
+  return{xs:Object.values(newX).filter(x=>!S.docs[x.id]&&used.has(x.id)),ws:fresh,skipped:ws.length-fresh.length}}
 async function importHevy(files,sh){const say=m=>{sh.st.imp=m;const e=sh.el.querySelector('#impst');if(e)e.textContent=m};const out=[];
   try{for(const file of files){const text=await file.text(),head=(text.split(/\r?\n/,1)[0]||'').toLowerCase();
-      if(head.includes('exercise_title')){const{xs,ws}=parseHevy(text);if(!ws.length){out.push(`${file.name}: no workouts found`);continue}
+      if(head.includes('exercise_title')){const{xs,ws,skipped}=parseHevy(text);if(!ws.length){out.push(skipped?`no new workouts (${skipped} already in Lift Log)`:`${file.name}: no workouts found`);continue}
         say(`Importing ${ws.length} workouts…`);await bulk([...xs.map(x=>[x.id,x]),...ws.map(w=>[w.id,w])],(i,n)=>say(`Importing workouts… ${i} of ${n}`));
-        say('Building routines…');const nr=await buildRoutines();out.push(`${ws.length} workouts${xs.length?`, ${xs.length} new exercises`:''}${nr?`, ${nr} routines`:''}`)}
-      else if(head.includes('weight_kg')||head.includes('waist_in')){const ms=parseHevyMeasures(text);await bulk(ms.map(m=>[m.id,m]),(i,n)=>say(`Importing measurements… ${i} of ${n}`));out.push(`${ms.length} measurement entries`)}
+        say('Building routines…');const nr=await buildRoutines();out.push(`${cnt(ws.length,'new workout')}${xs.length?`, ${cnt(xs.length,'new exercise')}`:''}${nr?`, ${cnt(nr,'routine')}`:''}${skipped?` (${skipped} already in Lift Log)`:''}`)}
+      else if(head.includes('weight_kg')||head.includes('waist_in')){const all=parseHevyMeasures(text),days=new Set(MS.map(m=>hevyDate(m.date).split(',')[0])),ms=all.filter(m=>!S.docs[m.id]&&!days.has(hevyDate(m.date).split(',')[0]));await bulk(ms.map(m=>[m.id,m]),(i,n)=>say(`Importing measurements… ${i} of ${n}`));out.push(`${cnt(ms.length,'new measurement entry','new measurement entries')}${all.length>ms.length?` (${all.length-ms.length} already in Lift Log)`:''}`)}
       else out.push(`${file.name}: not a Hevy export`)}
     say(`Done: ${out.join('; ')}.`);toast('Hevy data imported')}catch(e){say(e.message||'Import failed.')}}
 async function restoreJSON(sh){const t=(sh.el.querySelector('[data-f="rjson"]')||{}).value||'';let o;try{o=JSON.parse(t)}catch(e){return toast("That isn't valid backup JSON")}
@@ -1215,7 +1219,7 @@ document.addEventListener('click',async e=>{
   case'mr':UI.mr=d.r;renderMain();break;
   case'mnew':{const t=new Date();t.setHours(12,0,0,0);openSheet('meas',{isNew:true,e:{kind:'measure',id:'m_'+rid(),date:t.getTime(),v:{}}});break}
   case'mopen':{const m=S.docs[d.id];if(m)openSheet('meas',{e:clone(m)});break}
-  case'msave':{const e=sh.st.e;if(!Object.keys(e.v).length&&!(e.photos||[]).length)return toast('Enter a measurement or add a photo');put(e.id,e);if(ASSETS)(sh.st.rm||[]).forEach(id=>ASSETS.delete(id).catch(()=>{}));closeSheet(sh);UI.tab='body';location.hash='body';renderMain();toast('Measurements saved');break}
+  case'msave':{const e=sh.st.e;if(!Object.keys(e.v).length&&!(e.photos||[]).length)return toast('Enter a measurement or add a photo');{const bad=Object.entries(e.v).map(([k,v])=>mProblem(k,v)).find(Boolean);if(bad)return toast(bad)}put(e.id,e);if(ASSETS)(sh.st.rm||[]).forEach(id=>ASSETS.delete(id).catch(()=>{}));closeSheet(sh);UI.tab='body';location.hash='body';renderMain();toast('Measurements saved');break}
   case'mdel':if(await confirmD('Delete this entry?',(sh.st.e.photos||[]).length?'Its photos are deleted too.':'','Delete entry')){const old=S.docs[sh.st.e.id],ids=[...((old||{}).photos||[]),...(sh.st.rm||[])];let undone=false;if(old)put(old.id,null);closeSheet(sh);renderMain();
     setTimeout(()=>{if(!undone&&ASSETS)ids.forEach(id=>ASSETS.delete(id).catch(()=>{}))},7000);if(old)toast('Entry deleted',()=>{undone=true;put(old.id,old);renderMain()})}break;
   case'setrest':{const v=await menu('Default rest timer',RESTS.map(s=>({l:fmtRest(s),v:String(s),on:s===settings().rest})));if(v!=null){put('settings',{...settings(),kind:'settings',rest:+v});paint(sh)}break}
