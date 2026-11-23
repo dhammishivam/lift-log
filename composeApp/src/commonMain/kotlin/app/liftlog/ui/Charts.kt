@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.liftlog.logic.dShort
 import app.liftlog.logic.fmtN
+import app.liftlog.logic.weeklyLevel
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -218,5 +219,28 @@ fun MusclesWorked(cnt: Map<String, Double>) {
             }
         }
         Mu("Sets per muscle; muscles that help count half a set.", Modifier.padding(top = 6.dp), size = 13.sp)
+    }
+}
+
+/** Weekly sets for one muscle as bars, with the 10–20 sets growth range shaded behind them. */
+@Composable
+fun WeekBars(weeks: List<Double>, modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    val top = maxOf(22.0, weeks.maxOrNull() ?: 0.0).toFloat()
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val style = androidx.compose.ui.text.TextStyle(color = p.mu, fontSize = 10.sp)
+    Canvas(modifier.fillMaxWidth().height(96.dp)) {
+        val h = size.height - 14.dp.toPx(); val n = weeks.size; val gap = 4.dp.toPx(); val bw = (size.width - gap * (n - 1)) / n
+        fun y(v: Float) = h - v / top * h
+        drawRect(lerp(p.s2, p.ok, 0.14f), Offset(0f, y(20f)), androidx.compose.ui.geometry.Size(size.width, y(10f) - y(20f)))
+        weeks.forEachIndexed { i, v ->
+            val x = i * (bw + gap); val lvl = weeklyLevel(v)
+            val c = if (v <= 0.0) p.s2 else if (lvl >= 3) p.ac else lerp(p.s2, p.ac, 0.5f)
+            val top1 = if (v <= 0.0) h - 3f else y(v.toFloat())
+            drawRoundRect(c, Offset(x, top1), androidx.compose.ui.geometry.Size(bw, h - top1), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+        }
+        drawText(measurer, "${n} wk ago", Offset(0f, h + 2.dp.toPx()), style)
+        val t = measurer.measure("This week", style); drawText(t, topLeft = Offset(size.width - t.size.width, h + 2.dp.toPx()))
+        val g = measurer.measure("10–20", style); drawText(g, topLeft = Offset(size.width - g.size.width - 2.dp.toPx(), y(20f) + 1.dp.toPx()))
     }
 }

@@ -248,7 +248,7 @@ internal fun MusclesView(st: AppState) {
         val shades = volumeShades()
         BodyMap(cnt.mapValues { weeklyLevel(it.value / maxOf(1.0, wk)) }, shades, sel = sel) { sel = it }
         MapLegend(shades, listOf("None", "1–3 / wk", "4–9", "10–20", "20+"))
-        sel?.let { r -> MuscleDetail(st, r, cnt[r] ?: 0.0, pc[r] ?: 0.0, wk, last[r], regionExercises(cur, exOf, r)) { sel = null } }
+        sel?.let { r -> MuscleDetail(st, r, cnt[r] ?: 0.0, pc[r] ?: 0.0, wk, last[r], regionExercises(cur, exOf, r), regionWeeks(idx.ws, exOf, r, now)) { sel = null } }
         val low = MAJOR.filter { (cnt[it] ?: 0.0) / maxOf(1.0, wk) < 10 }
         if (days >= 7 && low.isNotEmpty()) Panel(Modifier.padding(top = 12.dp)) {
             Txt("Under 10 sets a week", size = 15.sp, weight = FontWeight.SemiBold)
@@ -267,8 +267,10 @@ internal fun MusclesView(st: AppState) {
                 .clickable { sel = if (sel == m) null else m }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).clip(CircleShape).background(c)); Spacer(Modifier.width(8.dp))
                 Txt(m, Modifier.width(104.dp), size = 15.sp)
+                val tgt = 10 * maxOf(1.0, wk); val scale = maxOf(mx, tgt * 1.15)
                 Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(p.s2)) {
-                    Box(Modifier.fillMaxWidth((v / mx).toFloat()).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(c))
+                    Box(Modifier.fillMaxWidth((v / scale).toFloat()).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(c))
+                    Box(Modifier.fillMaxWidth((tgt / scale).toFloat()).fillMaxHeight()) { Box(Modifier.align(Alignment.CenterEnd).width(2.dp).fillMaxHeight().background(p.ink.copy(alpha = 0.55f))) }
                 }
                 Column(Modifier.width(80.dp).padding(start = 10.dp), horizontalAlignment = Alignment.End) {
                     Txt(setsLabel(v), size = 17.sp, weight = FontWeight.SemiBold)
@@ -277,13 +279,28 @@ internal fun MusclesView(st: AppState) {
                 }
             }
         }
-        Mu("Sets are credited to every muscle an exercise works: 1 for the target, ½ for helpers (bench press: chest 1, triceps and front delts ½). Warm-ups are left out. Tap a muscle on the map or in the list.", Modifier.padding(top = 8.dp), size = 13.sp)
+        Mu("Sets are credited to every muscle an exercise works: 1 for the target, ½ for helpers (bench press: chest 1, triceps and front delts ½). Warm-ups are left out. The tick on each bar is 10 sets a week. Tap a muscle on the map or in the list.", Modifier.padding(top = 8.dp), size = 13.sp)
     } else {
         val shades = recoveryShades()
         val lv = REGIONS.associateWith { r -> recoveryLevel(last[r]?.let { (now - it) / 3_600_000.0 }) }
         Mu("Muscles that got 2+ sets recently. Most recover in 48–72 hours.", Modifier.padding(top = 10.dp), size = 14.sp)
         BodyMap(lv, shades, sel = sel) { sel = it }
         MapLegend(shades, listOf("Fresh", "48–72 h", "24–48 h", "Under 24 h"))
+        val next = remember(idx.ws.size, now / 3_600_000) { trainNext(idx.ws, exOf, now) }
+        if (next.isNotEmpty()) Panel(Modifier.padding(top = 12.dp)) {
+            Txt("Train next", size = 16.sp, weight = FontWeight.SemiBold)
+            Mu("Recovered and furthest from 10 sets this week.", size = 13.sp)
+            next.forEach { n ->
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp).clickable { sel = n.region }, verticalAlignment = Alignment.CenterVertically) {
+                    Txt(n.region, Modifier.weight(1f), size = 15.sp, weight = FontWeight.SemiBold)
+                    Mu("${setsLabel(n.weekSets)} / 10 sets", size = 13.sp)
+                }
+                Box(Modifier.fillMaxWidth().padding(top = 4.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(p.s2)) {
+                    Box(Modifier.fillMaxWidth((n.weekSets / 10.0).coerceIn(0.0, 1.0).toFloat()).fillMaxHeight().background(p.ac))
+                }
+                if (n.exercises.isNotEmpty()) ChipRow { n.exercises.forEach { e -> Chip(idx.exOf(e).name, false) { st.push(Screen.ExerciseDetail(e)) } } }
+            }
+        }
         val ready = MAJOR.filter { (lv[it] ?: 0) == 0 }; val sore = REGIONS.filter { (lv[it] ?: 0) >= 1 }
         Panel(Modifier.padding(top = 12.dp)) {
             Txt("Ready to train", size = 15.sp, weight = FontWeight.SemiBold)
@@ -299,7 +316,7 @@ internal fun MusclesView(st: AppState) {
 
 /** What one muscle got in the period, from a tap on the map or the list. */
 @Composable
-private fun MuscleDetail(st: AppState, r: String, v: Double, pv: Double, wk: Double, last: Long?, exs: List<Pair<String, Double>>, close: () -> Unit) {
+private fun MuscleDetail(st: AppState, r: String, v: Double, pv: Double, wk: Double, last: Long?, exs: List<Pair<String, Double>>, weeks: List<Double>, close: () -> Unit) {
     val p = LocalPal.current
     Panel(Modifier.padding(top = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -311,6 +328,10 @@ private fun MuscleDetail(st: AppState, r: String, v: Double, pv: Double, wk: Dou
             Stat("Change", (if (v >= pv) "+" else "−") + setsLabel(kotlin.math.abs(v - pv)), Modifier.weight(1f))
         }
         Mu(last?.let { "Last trained ${ago(st.now - it)}" } ?: "Not trained recently", Modifier.padding(top = 8.dp), size = 14.sp)
+        Txt("Last 12 weeks", Modifier.padding(top = 12.dp), size = 14.sp, weight = FontWeight.SemiBold)
+        val inRange = weeks.count { it >= 10 && it <= 20 }
+        Mu("$inRange of 12 weeks in the 10–20 sets range", size = 13.sp)
+        WeekBars(weeks, Modifier.padding(top = 6.dp))
         if (exs.isNotEmpty()) {
             Txt("From", Modifier.padding(top = 10.dp), size = 14.sp, weight = FontWeight.SemiBold)
             exs.take(5).forEach { (e, n) ->

@@ -158,3 +158,25 @@ fun regionSetsOf(items: List<app.liftlog.model.ExItem>, exOf: (String) -> Exerci
 
 /** 12.5 → "12.5", 12.0 → "12". */
 fun setsLabel(v: Double): String = fmtN(kotlin.math.round(v * 2) / 2)
+
+/** Sets a region got in each of the last [weeks] weeks, oldest first; each week ends at [now]. */
+fun regionWeeks(workouts: List<Workout>, exOf: (String) -> Exercise, region: String, now: Long, weeks: Int = 12): List<Double> {
+    val wk = 7 * 86_400_000L; val out = DoubleArray(weeks)
+    workouts.forEach { w ->
+        val i = weeks - 1 - ((now - w.start) / wk).toInt(); if (w.start > now || i !in 0 until weeks) return@forEach
+        w.exercises.forEach { e -> val n = working(e.sets).size; val k = muscleTargets(exOf(e.eid))[region] ?: 0.0; out[i] += n * k }
+    }
+    return out.toList()
+}
+
+/** A suggestion for the next session: recovered main muscles with the fewest sets in the last 7 days. */
+data class NextUp(val region: String, val weekSets: Double, val exercises: List<String>)
+
+fun trainNext(workouts: List<Workout>, exOf: (String) -> Exercise, now: Long, take: Int = 3): List<NextUp> {
+    val last = lastTrained(workouts, exOf)
+    val week = regionSets(workouts.filter { it.start in (now - 7 * 86_400_000L)..now }, exOf)
+    val recent = workouts.filter { it.start >= now - 90 * 86_400_000L }
+    return MAJOR.filter { recoveryLevel(last[it]?.let { t -> (now - t) / 3_600_000.0 }) == 0 && (week[it] ?: 0.0) < 10 }
+        .sortedBy { week[it] ?: 0.0 }.take(take)
+        .map { r -> NextUp(r, week[r] ?: 0.0, regionExercises(recent, exOf, r).filter { (e, _) -> (muscleTargets(exOf(e))[r] ?: 0.0) >= 1.0 }.take(3).map { it.first }) }
+}
