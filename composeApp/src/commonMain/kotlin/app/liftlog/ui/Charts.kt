@@ -138,7 +138,7 @@ fun BodyMap(levels: Map<String, Int>, shades: List<Color>, maxWidth: androidx.co
                                     paths.forEach { path -> drawPath(path, c) }
                                 }
                                 pv.regions.forEach { (m, paths) ->
-                                    val on = m == sel || ALSO[m] == sel
+                                    val on = sel != null && (m == sel || ALSO[m] == sel)
                                     paths.forEach { path -> drawPath(path, if (on) p.ink else p.bg, style = Stroke(width = if (on) 7f else 2.2f)) }
                                 }
                             }
