@@ -130,11 +130,14 @@ fun MusclesWorked(cnt: Map<String, Int>) {
     Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
         Txt("Muscles worked", size = 17.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         BodyMap(cnt, maxWidth = 230.dp, legend = false)
-        FlowRowX {
-            cnt.forEach { (m, n) ->
-                Row(Modifier.background(p.s1, androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Txt(m, size = 14.sp); Spacer(Modifier.width(6.dp)); Txt("$n", size = 14.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = p.ac)
+        val mx = maxOf(1, cnt.values.maxOrNull() ?: 0)
+        cnt.forEach { (m, n) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Txt(m, Modifier.width(100.dp), size = 15.sp)
+                Box(Modifier.weight(1f).height(10.dp).background(p.s2, androidx.compose.foundation.shape.RoundedCornerShape(5.dp))) {
+                    Box(Modifier.fillMaxWidth(n.toFloat() / mx).fillMaxHeight().background(p.ac, androidx.compose.foundation.shape.RoundedCornerShape(5.dp)))
                 }
+                Txt("$n", Modifier.width(36.dp), size = 15.sp, weight = androidx.compose.ui.text.font.FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.End)
             }
         }
         Mu("Working sets per main muscle.", Modifier.padding(top = 6.dp), size = 13.sp)

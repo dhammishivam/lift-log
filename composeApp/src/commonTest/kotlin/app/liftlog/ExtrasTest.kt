@@ -8,6 +8,15 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ExtrasTest {
+    @Test fun musclesCountWorkingSetsPerMainMuscle() {
+        val idx = Index(Data())
+        val bench = ExItem(eid = "b:" + slug("Bench Press (Barbell)"), sets = listOf(WSet(t = "w", kg = 20.0, reps = 10.0), WSet(kg = 60.0, reps = 8.0, done = true), WSet(kg = 60.0, reps = 8.0)))
+        val squat = ExItem(eid = "b:" + slug("Squat (Barbell)"), sets = listOf(WSet(kg = 100.0, reps = 5.0, done = true)))
+        assertEquals(mapOf("Chest" to 2, "Quads" to 1), muscleSets(idx, listOf(squat, bench)))
+        assertEquals(listOf("Chest", "Quads"), muscleSets(idx, listOf(squat, bench)).keys.toList()) // most sets first
+        assertEquals(mapOf("Chest" to 1, "Quads" to 1), muscleSets(idx, listOf(bench, squat), doneOnly = true))
+    }
+
     @Test fun setsNeedTheirRequiredFields() {
         assertEquals("Add the weight first", setProblem("wr", WSet(reps = 8.0)))
         assertEquals("Add the weight first", setProblem("wr", WSet(kg = 0.0, reps = 8.0)))

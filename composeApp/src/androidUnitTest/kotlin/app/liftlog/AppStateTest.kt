@@ -67,12 +67,13 @@ class AppStateTest {
     }
 
     @Test fun aWeightedSetNeedsWeightAndReps() {
-        val (st, _) = loadedState(Seed().active(Active(id = "a1", start = now, exercises = listOf(bench(listOf(WSet(reps = 8.0), WSet(kg = 60.0)))))))
+        // (A set's empty fields are first filled from hints, so each case is its own first set.)
+        val (st, _) = loadedState(Seed().active(Active(id = "a1", start = now, exercises = listOf(bench(listOf(WSet(reps = 8.0))), squat(listOf(WSet(kg = 60.0)))))))
         checkSet(st, 0, 0)
         assertEquals("Add the weight first", st.toast!!.text)
-        checkSet(st, 0, 1)
+        checkSet(st, 1, 0)
         assertEquals("Add the reps first", st.toast!!.text)
-        assertTrue(st.data.active!!.exercises[0].sets.none { it.done == true })
+        assertTrue(st.data.active!!.exercises.all { e -> e.sets.none { it.done == true } })
         assertEquals(0L, st.restEnd)
     }
 
