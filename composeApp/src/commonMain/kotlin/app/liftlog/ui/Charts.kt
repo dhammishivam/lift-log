@@ -6,6 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -86,12 +89,53 @@ fun LineChart(series: List<Series>, modifier: Modifier = Modifier.fillMaxWidth()
 }
 
 /* ---------- body heat map: an original simple figure, front and back ---------- */
+/** One shape of the artwork: its path, bounds, and the fibre angle (degrees) if it is a muscle. */
+private class Piece(val path: Path, val b: androidx.compose.ui.geometry.Rect, val fib: Float?)
+
+/** Fibre direction per muscle (degrees, y down) on the figure's left half; the right half mirrors it. */
+private val FIB = mapOf("Chest" to 15f, "Abs" to 90f, "Obliques" to 45f, "Front delts" to 80f, "Side delts" to 85f, "Rear delts" to 80f,
+    "Biceps" to 100f, "Triceps" to 100f, "Forearms" to 105f, "Traps" to -27f, "Quads" to 80f, "Adductors" to 112f, "Abductors" to 100f,
+    "Calves" to 90f, "Hamstrings" to 88f, "Glutes" to 140f, "Lats" to 59f, "Upper back" to 17f, "Lower back" to 90f)
+
 /** A side of the body map with its paths parsed once. */
 private class ParsedView(val v: BodyView) {
     private fun parse(d: String) = androidx.compose.ui.graphics.vector.PathParser().parsePathString(d).toPath()
-    val base: Path by lazy { Path().apply { v.base.forEach { addPath(parse(it)) } } }
-    val regions: Map<String, List<Path>> by lazy { v.regions.mapValues { (_, ds) -> ds.map(::parse) } }
+    private val cx get() = v.vb[0] + v.vb[2] / 2
+    private fun piece(d: String, m: String?): Piece {
+        val pth = parse(d); val b = pth.getBounds()
+        val f = m?.let { FIB[it] }?.let { if (b.center.x < cx) it else 180f - it }
+        return Piece(pth, b, f?.let { kotlin.math.round((it - 90f) / 5f) * 5f })
+    }
+    val baseParts: List<Piece> by lazy { v.base.map { piece(it, null) } }
+    val base: Path by lazy { Path().apply { baseParts.forEach { addPath(it.path) } } }
+    val pieces: Map<String, List<Piece>> by lazy { v.regions.mapValues { (m, ds) -> ds.map { piece(it, m) } } }
+    val regions: Map<String, List<Path>> by lazy { pieces.mapValues { (_, ps) -> ps.map { it.path } } }
 }
+
+/** Light from the upper left: a soft highlight that falls off into a darker rim, so each shape reads as rounded. */
+private fun DrawScope.volume(pc: Piece) {
+    val b = pc.b; val r = maxOf(1f, 0.8f * (b.width + b.height) / 2f)
+    drawPath(pc.path, Brush.radialGradient(
+        0f to Color.White.copy(alpha = 0.28f), 0.42f to Color.White.copy(alpha = 0f), 0.78f to Color.Black.copy(alpha = 0.16f), 1f to Color.Black.copy(alpha = 0.42f),
+        center = Offset(b.left + b.width * 0.4f, b.top + b.height * 0.3f), radius = r))
+}
+
+/** Muscle fibres: fine dark lines with a faint light edge, clipped to the shape and run along the muscle. */
+private fun DrawScope.fibres(pc: Piece) {
+    val a = pc.fib ?: return; val b = pc.b; val c = b.center
+    val rr = kotlin.math.sqrt(b.width * b.width + b.height * b.height) / 2f + 12f
+    clipPath(pc.path) {
+        rotate(a, c) {
+            var x = c.x - rr
+            while (x < c.x + rr) {
+                drawLine(Color.Black.copy(alpha = 0.2f), Offset(x, c.y - rr), Offset(x, c.y + rr), 2.4f)
+                drawLine(Color.White.copy(alpha = 0.07f), Offset(x + 5.5f, c.y - rr), Offset(x + 5.5f, c.y + rr), 1.4f)
+                x += 11f
+            }
+        }
+    }
+}
+
 private val FRONT_V by lazy { ParsedView(BodyPaths.front) }
 private val BACK_V by lazy { ParsedView(BodyPaths.back) }
 /** Side delts have no shape of their own in the artwork, so they show through the front and rear delts. */
@@ -128,18 +172,27 @@ fun BodyMap(levels: Map<String, Int>, shades: List<Color>, maxWidth: androidx.co
                     val tap = if (onTap == null) Modifier else Modifier.pointerInput(pv) {
                         detectTapGestures { o -> val k = vb[2] / w; onTap(regionAt(pv.regions, vb[0] + o.x * k, vb[1] + o.y * k)) }
                     }
-                    Canvas(Modifier.fillMaxWidth().aspectRatio(vb[2] / vb[3]).then(tap)) {
-                        w = size.width; val k = size.width / vb[2]
-                        scale(k, k, pivot = Offset.Zero) {
-                            translate(-vb[0], -vb[1]) {
-                                drawPath(pv.base, lerp(p.s2, p.ink, 0.22f))
-                                pv.regions.forEach { (m, paths) ->
-                                    val c = shades[lv(m)]
-                                    paths.forEach { path -> drawPath(path, c) }
-                                }
-                                pv.regions.forEach { (m, paths) ->
-                                    val on = sel != null && (m == sel || ALSO[m] == sel)
-                                    paths.forEach { path -> drawPath(path, if (on) p.ink else p.bg, style = Stroke(width = if (on) 7f else 2.2f)) }
+                    Box(Modifier.fillMaxWidth().aspectRatio(vb[2] / vb[3])) {
+                        // A soft shadow under the figure lifts it off the page.
+                        Canvas(Modifier.matchParentSize().offset(y = 3.dp).blur(8.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded)) {
+                            val k = size.width / vb[2]
+                            scale(k, k, pivot = Offset.Zero) { translate(-vb[0], -vb[1]) {
+                                drawPath(pv.base, Color.Black.copy(alpha = 0.55f)); pv.regions.values.forEach { ps -> ps.forEach { drawPath(it, Color.Black.copy(alpha = 0.55f)) } }
+                            } }
+                        }
+                        Canvas(Modifier.matchParentSize().then(tap)) {
+                            w = size.width; val k = size.width / vb[2]
+                            scale(k, k, pivot = Offset.Zero) {
+                                translate(-vb[0], -vb[1]) {
+                                    drawPath(pv.base, lerp(p.s2, p.ink, 0.22f))
+                                    pv.baseParts.forEach { volume(it) }
+                                    pv.pieces.forEach { (m, ps) ->
+                                        val c = shades[lv(m)]
+                                        ps.forEach { pc -> drawPath(pc.path, c); fibres(pc); volume(pc); drawPath(pc.path, p.bg, style = Stroke(width = 1.6f)) }
+                                    }
+                                    if (sel != null) pv.pieces.forEach { (m, ps) ->
+                                        if (m == sel || ALSO[m] == sel) ps.forEach { drawPath(it.path, p.ink, style = Stroke(width = 7f)) }
+                                    }
                                 }
                             }
                         }
