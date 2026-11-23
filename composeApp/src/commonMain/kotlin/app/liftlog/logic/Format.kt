@@ -173,3 +173,14 @@ fun setLabel(sets: List<WSet>, i: Int): String {
 
 /** "1 workout", "3 workouts". */
 fun count(n: Int, one: String, many: String = one + "s") = "$n ${if (n == 1) one else many}"
+
+/** A short number for tight spaces: 9,950 · 259.7k · 2.6M. */
+fun compactN(v: Double): String = when {
+    v < 10_000 -> fmtN(kotlin.math.round(v))
+    v < 1_000_000 -> fmtN(kotlin.math.round(v / 100) / 10) + "k"
+    else -> fmtN(kotlin.math.round(v / 100_000) / 10) + "M"
+}
+/** Volume for tight spaces, in the user's unit: 2.6M kg. */
+fun wvShort(kg: Double, lb: Boolean) = "${compactN(toU(kg, lb))} ${unitOf(lb)}"
+/** A long total time in whole hours once it passes 10 hours: 300 h, else 4h 12m. */
+fun durShort(ms: Long): String = if (ms >= 36_000_000L) "${fmtN(kotlin.math.round(ms / 3_600_000.0))} h" else dur(ms)

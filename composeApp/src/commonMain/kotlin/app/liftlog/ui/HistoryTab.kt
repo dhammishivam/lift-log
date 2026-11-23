@@ -82,11 +82,15 @@ private fun ProfileHeader(st: AppState) {
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 14.dp)) {
-            Stat("Workouts", ps.workouts.toString(), Modifier.weight(1f))
-            Stat("Time", dur(ps.ms), Modifier.weight(1f))
-            Stat("Volume", wv(ps.vol, lb), Modifier.weight(1f))
-            Stat("Records", ps.records.toString(), Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(16.dp)).background(p.s1).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            listOf("Workouts" to compactN(ps.workouts.toDouble()), "Hours" to durShort(ps.ms).removeSuffix(" h"), "Volume" to wvShort(ps.vol, lb), "Records" to compactN(ps.records.toDouble()))
+                .forEachIndexed { i, (l, v) ->
+                    if (i > 0) Box(Modifier.width(1.dp).height(34.dp).background(p.ln))
+                    Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Txt(v, size = 19.sp, weight = FontWeight.SemiBold, maxLines = 1)
+                        Mu(l, size = 12.sp)
+                    }
+                }
         }
     }
 }
@@ -249,7 +253,7 @@ internal fun MusclesView(st: AppState) {
         BodyMap(cnt.mapValues { weeklyLevel(it.value / maxOf(1.0, wk)) }, shades, sel = sel) { sel = it }
         MapLegend(shades, listOf("None", "1–3 / wk", "4–9", "10–20", "20+"))
         sel?.let { r -> MuscleDetail(st, r, cnt[r] ?: 0.0, pc[r] ?: 0.0, wk, last[r], regionExercises(cur, exOf, r), regionWeeks(idx.ws, exOf, r, now)) { sel = null } }
-        val low = MAJOR.filter { (cnt[it] ?: 0.0) / maxOf(1.0, wk) < 10 }
+        val low = MAJOR.filter { kotlin.math.round((cnt[it] ?: 0.0) / maxOf(1.0, wk) * 2) / 2 < 10 }
         if (days >= 7 && low.isNotEmpty()) Panel(Modifier.padding(top = 12.dp)) {
             Txt("Under 10 sets a week", size = 15.sp, weight = FontWeight.SemiBold)
             Mu("${low.joinToString(", ")}. Around 10–20 hard sets a week is the usual range for growth.", Modifier.padding(top = 4.dp), size = 14.sp)

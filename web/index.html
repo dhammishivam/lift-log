@@ -102,6 +102,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .bd{flex:1;overflow-y:auto;padding:12px 16px 48px;overscroll-behavior:contain}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 16px;border-bottom:1px solid var(--ln)}
 .stats.s4{grid-template-columns:repeat(4,minmax(0,1fr));padding:12px 0;border:0}
+.pst{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:16px;padding:14px 0;border-radius:16px;background:var(--s1)}.pst>div{text-align:center;padding:0 4px;min-width:0}.pst>div+div{border-left:1px solid var(--ln)}.pst b{display:block;font:600 19px/1.2 var(--num);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pst small{font-size:12px;color:var(--mu)}
 .stats small{display:block;font-size:13px;color:var(--mu)}
 .stats b{font:600 22px/1.15 var(--num);white-space:nowrap}
 .stats .ac{color:var(--ac)}
@@ -623,6 +624,7 @@ const fmtSet=(t,s)=>{if(!s)return'';const kg=fmtN(toU(s.kg||0)),u=UNIT(),r=s.rep
 const setM=s=>{const kg=s.kg||0,r=s.reps||0;return{w:kg,orm:r?(r===1?kg:kg*(1+r/30)):0,vol:kg*r,reps:r,sec:s.sec||0,km:s.km||0}};
 const isVol=t=>t==='wr'||t==='wbw';
 const LB=2.20462262;const UNIT=()=>(S.docs.settings&&S.docs.settings.unit)==='lb'?'lb':'kg';
+const cN=v=>v<1e4?fmtN(Math.round(v)):v<1e6?fmtN(Math.round(v/100)/10)+'k':fmtN(Math.round(v/1e5)/10)+'M';
 const toU=kg=>UNIT()==='lb'?kg*LB:kg,fromU=v=>UNIT()==='lb'?v/LB:v;
 const Wt=kg=>`${fmtN(toU(kg||0))} ${UNIT()}`,Wv=kg=>`${fmtN(Math.round(toU(kg||0)))} ${UNIT()}`;
 const hdr=(t,f,h)=>f==='kg'?(t==='wbw'?'+':'')+UNIT():h;
@@ -742,7 +744,7 @@ function profileHead(){const nm=(settings().name||'').trim(),since=WS.length?WS[
   const name=UI.pedit?`<div class="pname"><input data-f="pname" value="${esc(nm)}" placeholder="Your name" aria-label="Your name"><button class="btn sm pri" data-a="pnameSave">Save</button></div>`
     :`<button class="pnm ${nm?'':'mu'}" data-a="pnameEdit">${nm?esc(nm):'Add your name'}</button><small class="mu">${since?'Training since '+new Date(since).toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'Your training, all in one place'}</small>`;
   return`<div class="prof"><div class="pav">${nm?esc(nm[0].toUpperCase()):I.user}</div><div class="pinfo">${name}</div></div>
-  <div class="stats s4"><div><small>Workouts</small><b>${tot.n}</b></div><div><small>Time</small><b>${dur(tot.t)}</b></div><div><small>Volume</small><b>${Wv(tot.v)}</b></div><div><small>Records</small><b>${tot.p}</b></div></div>
+  <div class="pst">${[['Workouts',cN(tot.n)],['Hours',tot.t>=36e6?fmtN(Math.round(tot.t/36e5)):dur(tot.t)],['Volume',cN(toU(tot.v))+' '+UNIT()],['Records',cN(tot.p)]].map(([l,v])=>`<div><b>${v}</b><small>${l}</small></div>`).join('')}</div>
   <p class="mh">Dashboard</p><div class="dash">${[['rep','Statistics',I.chart],['mus','Muscles',I.dumb],['cal','Calendar',I.cal],['body','Measures',I.ruler]].map(([k,l,i])=>`<button data-a="${k==='body'?'tab':'hv'}" ${k==='body'?'data-t="body"':`data-v="${k}"`}>${i}<b>${l}</b></button>`).join('')}</div>`}
 function vHistory(){
   if(UI.hv!=='list'){const t={cal:'Calendar',mus:'Muscles',rep:'Statistics'}[UI.hv];return`<button class="btn sm" data-a="hv" data-v="list" style="margin:6px 0 10px">${I.left} Profile</button><h2 class="h3" style="margin-top:0">${t}</h2>`+(UI.hv==='cal'?vCal():UI.hv==='mus'?vMus():vRep())}
@@ -860,7 +862,7 @@ function vMus(){const mode=UI.mmode||'vol',sel=UI.msel,last=lastTrained(),now=Da
   const chips=`<div class="chips" style="margin-top:10px">${[['7','7 days'],['30','30 days'],['90','3 months'],['365','1 year']].map(([k,l])=>`<button class="chip ${UI.mu===k?'on':''}" data-a="mu" data-k="${k}">${l}</button>`).join('')}</div>`;
   const head=`<div class="mhead"><div class="big1">${sl(tot)} sets</div>${tot||ptot?`<span style="color:var(${d>=0?'--ok':'--fa'})">${d>=0?'+':'−'}${sl(Math.abs(d))} vs previous ${per}</span>`:''}</div><div class="mu" style="font-size:14px">${days>7?`About ${sl(tot/wk)} sets a week`:'This week'}</div>`;
   if(!cur.length)return seg+chips+head+'<p class="mu" style="margin-top:12px">No workouts in this period.</p>';
-  const w1=Math.max(1,wk),lv=Object.fromEntries(Object.entries(cnt).map(([m,v])=>[m,weeklyLevel(v/w1)])),low=MAJOR.filter(r=>(cnt[r]||0)/w1<10);
+  const w1=Math.max(1,wk),lv=Object.fromEntries(Object.entries(cnt).map(([m,v])=>[m,weeklyLevel(v/w1)])),low=MAJOR.filter(r=>Math.round((cnt[r]||0)/w1*2)/2<10);
   let det='';if(sel){const v=cnt[sel]||0,pv=pc[sel]||0,xs={};cur.forEach(w=>w.exercises.forEach(it=>{const k=muscleTargets(ex(it.eid))[sel];const n=it.sets.filter(s=>s.t!=='w').length;if(k&&n)xs[it.eid]=(xs[it.eid]||0)+n*k}));
     det=`<div class="mpanel"><div style="display:flex;align-items:center"><b style="flex:1;font-size:18px">${sel}</b><button class="ib" data-a="msel" data-m="${sel}" aria-label="Close">${I.x}</button></div>
     <div class="stats s3"><div><small>Sets</small><b>${sl(v)}</b></div><div><small>Per week</small><b>${sl(v/w1)}</b></div><div><small>Change</small><b>${v>=pv?'+':'−'}${sl(Math.abs(v-pv))}</b></div></div>
