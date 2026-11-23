@@ -237,7 +237,7 @@ internal fun MusclesView(st: AppState) {
     var mode by remember { mutableStateOf("vol") }
     var sel by remember { mutableStateOf<String?>(null) }
     val last = remember(idx.ws.size) { lastTrained(idx.ws, exOf) }
-    Seg(listOf("vol" to "Volume", "rec" to "Recovery"), mode) { mode = it }
+    Seg(listOf("vol" to "Volume", "rec" to "Recovery"), mode, onSel = { mode = it })
     if (mode == "vol") {
         Spacer(Modifier.height(10.dp)); ChipRow { listOf(7 to "7 days", 30 to "30 days", 90 to "3 months", 365 to "1 year").forEach { (k, l) -> Chip(l, st.mu == k) { st.mu = k } } }
         Big("${setsLabel(tot)} sets", Modifier.padding(top = 12.dp))

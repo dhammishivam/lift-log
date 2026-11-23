@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -84,17 +85,22 @@ fun LineChart(series: List<Series>, modifier: Modifier = Modifier.fillMaxWidth()
 }
 
 /* ---------- body heat map: an original simple figure, front and back ---------- */
-/** Parsed body map paths (in a 200 × 420 box), built once. */
-// Both halves in one path, so no hairline seam shows down the middle.
-private val SIL_P by lazy { listOf(androidx.compose.ui.graphics.Path().apply { BodyPaths.sil.forEach { d -> addPath(androidx.compose.ui.graphics.vector.PathParser().parsePathString(d).toPath()) } }) }
-private val FRONT_P by lazy { BodyPaths.front.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
-private val BACK_P by lazy { BodyPaths.back.mapValues { (_, ds) -> ds.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } } }
+/** A side of the body map with its paths parsed once. */
+private class ParsedView(val v: BodyView) {
+    private fun parse(d: String) = androidx.compose.ui.graphics.vector.PathParser().parsePathString(d).toPath()
+    val base: Path by lazy { Path().apply { v.base.forEach { addPath(parse(it)) } } }
+    val regions: Map<String, List<Path>> by lazy { v.regions.mapValues { (_, ds) -> ds.map(::parse) } }
+}
+private val FRONT_V by lazy { ParsedView(BodyPaths.front) }
+private val BACK_V by lazy { ParsedView(BodyPaths.back) }
+/** Side delts have no shape of their own in the artwork, so they show through the front and rear delts. */
+private val ALSO = mapOf("Front delts" to "Side delts", "Rear delts" to "Side delts")
 
 /** Shades for levels 0–4 of the volume map: untrained, then light to strong; 4 is above the productive range. */
 @Composable
 fun volumeShades(): List<Color> {
     val p = LocalPal.current
-    return listOf(lerp(p.s2, p.ink, 0.12f), lerp(p.s2, p.ac, 0.38f), lerp(p.s2, p.ac, 0.7f), p.ac, lerp(p.ac, Color.White, 0.38f))
+    return listOf(lerp(p.s2, p.ink, 0.12f), lerp(p.s2, p.ac, 0.3f), lerp(p.s2, p.ac, 0.62f), p.ac, lerp(p.ac, Color.White, 0.45f))
 }
 
 /** Shades for the recovery map: fresh, then 48–72 h, 24–48 h and under 24 h since trained. */
@@ -109,29 +115,31 @@ fun recoveryShades(): List<Color> {
  * which region was tapped (null for none), so the map works as a picker.
  */
 @Composable
-fun BodyMap(levels: Map<String, Int>, shades: List<Color>, maxWidth: androidx.compose.ui.unit.Dp = 380.dp, sel: String? = null, onTap: ((String?) -> Unit)? = null) {
+fun BodyMap(levels: Map<String, Int>, shades: List<Color>, maxWidth: androidx.compose.ui.unit.Dp = 460.dp, sel: String? = null, onTap: ((String?) -> Unit)? = null) {
     val p = LocalPal.current
+    fun lv(r: String) = maxOf(levels[r] ?: 0, ALSO[r]?.let { levels[it] } ?: 0).coerceIn(0, shades.lastIndex)
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Row(Modifier.widthIn(max = maxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf("Front" to FRONT_P, "Back" to BACK_P).forEach { (label, parts) ->
+        Row(Modifier.widthIn(max = maxWidth).fillMaxWidth()) {
+            listOf("Front" to FRONT_V, "Back" to BACK_V).forEach { (label, pv) ->
+                val vb = pv.v.vb
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     var w by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(1f) }
-                    val tap = if (onTap == null) Modifier else Modifier.pointerInput(parts) {
-                        detectTapGestures { o -> onTap(regionAt(parts, o.x * 200f / w, o.y * 200f / w)) }
+                    val tap = if (onTap == null) Modifier else Modifier.pointerInput(pv) {
+                        detectTapGestures { o -> val k = vb[2] / w; onTap(regionAt(pv.regions, vb[0] + o.x * k, vb[1] + o.y * k)) }
                     }
-                    Canvas(Modifier.fillMaxWidth().aspectRatio(200f / 430f).then(tap)) {
-                        w = size.width; val k = size.width / 200f
+                    Canvas(Modifier.fillMaxWidth().aspectRatio(vb[2] / vb[3]).then(tap)) {
+                        w = size.width; val k = size.width / vb[2]
                         scale(k, k, pivot = Offset.Zero) {
-                            SIL_P.forEach { drawPath(it, p.s2) }
-                            parts.forEach { (m, paths) ->
-                                val c = shades[(levels[m] ?: 0).coerceIn(0, shades.lastIndex)]
-                                paths.forEach { path ->
-                                    drawPath(path, c)
-                                    drawPath(path, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.Transparent)))
+                            translate(-vb[0], -vb[1]) {
+                                drawPath(pv.base, lerp(p.s2, p.ink, 0.22f))
+                                pv.regions.forEach { (m, paths) ->
+                                    val c = shades[lv(m)]
+                                    paths.forEach { path -> drawPath(path, c) }
                                 }
-                            }
-                            parts.forEach { (m, paths) ->
-                                paths.forEach { path -> drawPath(path, if (m == sel) p.ink else p.bg, style = Stroke(width = if (m == sel) 2.4f else 0.9f)) }
+                                pv.regions.forEach { (m, paths) ->
+                                    val on = m == sel || ALSO[m] == sel
+                                    paths.forEach { path -> drawPath(path, if (on) p.ink else p.bg, style = Stroke(width = if (on) 7f else 2.2f)) }
+                                }
                             }
                         }
                     }
@@ -142,16 +150,17 @@ fun BodyMap(levels: Map<String, Int>, shades: List<Color>, maxWidth: androidx.co
     }
 }
 
-/** Which region of [parts] contains the point (in the 200 × 430 drawing box), if any. */
+/** Which region contains the point (in the artwork's coordinates), if any. */
 private fun regionAt(parts: Map<String, List<Path>>, x: Float, y: Float): String? {
-    val dot = Path().apply { addOval(androidx.compose.ui.geometry.Rect(x - 1.5f, y - 1.5f, x + 1.5f, y + 1.5f)) }
+    val dot = Path().apply { addOval(androidx.compose.ui.geometry.Rect(x - 4f, y - 4f, x + 4f, y + 4f)) }
     return parts.entries.lastOrNull { (_, ps) -> ps.any { pth -> !Path().apply { op(pth, dot, androidx.compose.ui.graphics.PathOperation.Intersect) }.isEmpty } }?.key
 }
 
 /** A key for a shaded map: a swatch per level with its label. */
 @Composable
 fun MapLegend(shades: List<Color>, labels: List<String>) {
-    FlowRowX(Modifier.padding(top = 8.dp)) {
+    Spacer(Modifier.height(8.dp))
+    FlowRowX {
         labels.forEachIndexed { i, l ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).background(shades[i], androidx.compose.foundation.shape.RoundedCornerShape(3.dp)))
@@ -159,7 +168,12 @@ fun MapLegend(shades: List<Color>, labels: List<String>) {
             }
         }
     }
+    Spacer(Modifier.height(6.dp)); Mu(BODY_CREDIT, size = 10.sp)
 }
+
+/** The body artwork is MIT-licensed; its licence asks for this notice. */
+const val BODY_CREDIT = "Body art: react-native-body-highlighter © 2022 ELABBASSI Hicham (MIT)"
+
 
 /** Training balance across the six main groups: this period filled, the one before as an outline. */
 @Composable
