@@ -12,3 +12,6 @@ captures/
 iosApp/*.xcodeproj
 iosApp/Pods/
 xcuserdata/
+
+# Play upload bundles dropped on the Mac
+play-upload/
