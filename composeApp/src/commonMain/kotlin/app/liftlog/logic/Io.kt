@@ -35,7 +35,11 @@ fun hashStr(s: String): String {
     return h.toString(36)
 }
 
-data class HevyImport(val customs: List<CustomEx>, val workouts: List<Workout>)
+/** [skipped] counts workouts already in Lift Log: the same Hevy row imported before, or one logged here and exported. */
+data class HevyImport(val customs: List<CustomEx>, val workouts: List<Workout>, val skipped: Int = 0)
+
+/** Same title and same start minute means the same workout (Hevy's export keeps minutes, not seconds). */
+private fun sameWorkoutKey(title: String, start: Long) = title.trim().lowercase() + "|" + start / 60_000
 
 /** Parses Hevy's workout CSV export. Known exercise names link to the library; others become custom exercises. */
 fun parseHevyWorkouts(text: String, idx: Index): HevyImport {
@@ -78,7 +82,16 @@ fun parseHevyWorkouts(text: String, idx: Index): HevyImport {
     val workouts = ws.values.filter { it.items.isNotEmpty() }.map { b ->
         Workout(id = "w_h" + hashStr(b.key), title = b.title, notes = b.notes, start = b.start, end = b.end, exercises = b.items, src = "hevy")
     }
-    return HevyImport(newX.values.filter { it.id !in idx.data.customs }, workouts)
+    val have = idx.data.workouts.values.mapTo(HashSet()) { sameWorkoutKey(it.title, it.start) }
+    val fresh = workouts.filter { it.id !in idx.data.workouts && sameWorkoutKey(it.title, it.start) !in have }
+    val used = fresh.flatMapTo(HashSet()) { w -> w.exercises.map { it.eid } }
+    return HevyImport(newX.values.filter { it.id !in idx.data.customs && it.id in used }, fresh, workouts.size - fresh.size)
+}
+
+/** Drops entries already in Lift Log: the same import again, or a day that already has an entry (an exported file coming back). */
+fun newMeasures(ms: List<Measure>, idx: Index): List<Measure> {
+    val days = idx.data.measures.values.mapTo(HashSet()) { hevyDate(it.date).substringBefore(",") }
+    return ms.filter { it.id !in idx.data.measures && hevyDate(it.date).substringBefore(",") !in days }
 }
 
 fun parseHevyMeasures(text: String): List<Measure> {

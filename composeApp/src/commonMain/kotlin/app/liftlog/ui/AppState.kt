@@ -178,13 +178,16 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
                     head.contains("exercise_title") -> {
                         importStatus = "Importing workouts…"
                         val r = parseHevyWorkouts(text, idx)
-                        if (r.workouts.isEmpty()) { out += "$name: no workouts found"; return@forEach }
+                        if (r.workouts.isEmpty() && r.skipped == 0) { out += "$name: no workouts found"; return@forEach }
+                        if (r.workouts.isEmpty()) { out += "no new workouts (${r.skipped} already in Lift Log)"; return@forEach }
                         store.importAll(r.customs, r.workouts, emptyList(), emptyList())
                         val nr = idx.routinesFromHistory().also { rs -> store.importAll(emptyList(), emptyList(), emptyList(), rs) }.size
-                        out += "${r.workouts.size} workouts" + (if (r.customs.isNotEmpty()) ", ${r.customs.size} new exercises" else "") + (if (nr > 0) ", $nr routines" else "")
+                        out += count(r.workouts.size, "new workout") + (if (r.customs.isNotEmpty()) ", " + count(r.customs.size, "new exercise") else "") +
+                            (if (nr > 0) ", " + count(nr, "routine") else "") + (if (r.skipped > 0) " (${r.skipped} already in Lift Log)" else "")
                     }
                     head.contains("weight_kg") || head.contains("waist_in") -> {
-                        val ms = parseHevyMeasures(text); store.importAll(emptyList(), emptyList(), ms, emptyList()); out += "${ms.size} measurement entries"
+                        val all = parseHevyMeasures(text); val ms = newMeasures(all, idx); store.importAll(emptyList(), emptyList(), ms, emptyList())
+                        out += count(ms.size, "new measurement entry", "new measurement entries") + (if (all.size > ms.size) " (${all.size - ms.size} already in Lift Log)" else "")
                     }
                     text.trimStart().startsWith("{") -> {
                         val docs = parseBackup(text); store.importDocs(docs); out += "${docs.size} items from backup"

@@ -170,3 +170,6 @@ fun setLabel(sets: List<WSet>, i: Int): String {
     val s = sets[i]
     return if (s.t == "n") sets.take(i + 1).count { it.t == "n" }.toString() else s.t.uppercase()
 }
+
+/** "1 workout", "3 workouts". */
+fun count(n: Int, one: String, many: String = one + "s") = "$n ${if (n == 1) one else many}"

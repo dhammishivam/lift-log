@@ -105,4 +105,44 @@ class ImportExportTest {
     @Test fun backupWithoutDocsIsRejected() {
         assertFailsWith<IllegalArgumentException> { parseBackup("{\"app\":\"liftlog\"}") }
     }
+
+    @Test fun reimportingOwnExportAddsNothing() {
+        val w = workout("w_local", at(2026, 3, 2, 8, 32) + 41_000, item(BENCH, set(60.0, 8.0)), title = "Push")
+        val idx = Index(data(w))
+        val r = parseHevyWorkouts(csvWorkouts(idx), idx)
+        assertEquals(0, r.workouts.size)
+        assertEquals(1, r.skipped)
+    }
+
+    @Test fun reimportingHevyFileTwiceAddsNothing() {
+        val first = parseHevyWorkouts(HEVY_WORKOUTS, empty)
+        val idx = Index(data(*first.workouts.toTypedArray()))
+        val again = parseHevyWorkouts(HEVY_WORKOUTS, idx)
+        assertEquals(0, again.workouts.size)
+        assertEquals(first.workouts.size, again.skipped)
+        assertEquals(0, again.customs.size)
+    }
+
+    @Test fun measurementsAlreadyLoggedThatDayAreSkipped() {
+        val m = Measure(id = "m_local", date = at(2026, 3, 2, 12, 0), v = mapOf("weight_kg" to 78.5))
+        val idx = Index(data(measures = listOf(m)))
+        assertEquals(0, newMeasures(parseHevyMeasures(csvMeasures(idx)), idx).size)
+        val other = Measure(id = "m_h1", date = at(2026, 3, 3, 12, 0), v = mapOf("weight_kg" to 78.0))
+        assertEquals(1, newMeasures(listOf(other), idx).size)
+    }
+
+    @Test fun implausibleMeasurementsAreFlagged() {
+        assertTrue(measureProblem("fat_percent", 18232.0) != null)
+        assertNull(measureProblem("fat_percent", 18.0))
+        assertTrue(measureProblem("weight_kg", 0.5) != null)
+        assertNull(measureProblem("weight_kg", 78.5))
+        assertTrue(measureProblem("waist_in", 320.0) != null)
+        assertNull(measureProblem("waist_in", 32.0))
+    }
+
+    @Test fun countPluralises() {
+        assertEquals("1 workout", count(1, "workout"))
+        assertEquals("3 workouts", count(3, "workout"))
+        assertEquals("1 measurement entry", count(1, "measurement entry", "measurement entries"))
+    }
 }

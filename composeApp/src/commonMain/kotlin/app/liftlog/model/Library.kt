@@ -266,3 +266,15 @@ val MF = listOf(
     Triple("left_thigh_in", "Left thigh", "in"), Triple("right_thigh_in", "Right thigh", "in"), Triple("left_calf_in", "Left calf", "in"),
     Triple("right_calf_in", "Right calf", "in"),
 )
+
+/** A reason the value can't be right (a typo like 18232 % body fat), or null. Values are stored in kg, % and inches. */
+fun measureProblem(key: String, v: Double): String? {
+    val label = MF.firstOrNull { it.first == key }?.second ?: key
+    val ok = when {
+        key == "weight_kg" -> v in 20.0..400.0
+        key == "fat_percent" -> v in 1.0..75.0
+        key.endsWith("_in") -> v in 2.0..100.0
+        else -> v >= 0
+    }
+    return if (ok) null else "$label looks wrong. Check the number."
+}

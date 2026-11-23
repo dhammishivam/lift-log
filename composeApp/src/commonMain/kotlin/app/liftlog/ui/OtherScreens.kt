@@ -119,6 +119,7 @@ fun MeasureEditorScreen(st: AppState, s: Screen.MeasureEditor) {
     var dateText by remember { mutableStateOf(ldt(e.date).date.toString()) }
     fun save() {
         if (e.v.isEmpty() && e.photos.isNullOrEmpty()) { st.say("Enter a measurement or add a photo"); return }
+        e.v.firstNotNullOfOrNull { (k, v) -> measureProblem(k, v) }?.let { st.say(it); return }
         st.store.putMeasure(e); s.removed.forEach { st.platform.deletePhoto(it) }
         st.close(s); st.tab = Tab.Body; st.say("Measurements saved")
     }
@@ -251,7 +252,7 @@ fun SettingsScreenView(st: AppState) {
                     Btn("Source code", { st.platform.openUrl(SOURCE_URL) }, small = true)
                 }
             }
-            Mu("${st.idx.ws.size} workouts · ${st.idx.rs.size} routines · ${st.idx.ms.size} measurement entries. Everything is stored on this phone (${st.platform.name}).", Modifier.padding(top = 8.dp))
+            Mu("${count(st.idx.ws.size, "workout")} · ${count(st.idx.rs.size, "routine")} · ${count(st.idx.ms.size, "measurement entry", "measurement entries")}. Everything is stored on this phone (${st.platform.name}).", Modifier.padding(top = 8.dp))
         }
     }
 }

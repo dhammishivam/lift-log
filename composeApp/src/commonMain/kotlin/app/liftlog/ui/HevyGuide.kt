@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.liftlog.logic.count
 import app.liftlog.logic.fmtRest
 import app.liftlog.logic.rid
 import app.liftlog.model.RESTS
@@ -28,7 +29,7 @@ private fun steps(st: AppState): List<Step> {
         Step("export", "Export your data from Hevy",
             "In the Hevy app: Profile → Settings (gear icon) → Export & Import Data → Export Data. Tap Export Workouts, then Export Measurements, and save both CSV files to this phone (Downloads, Files or Drive). Do this before your Hevy subscription ends."),
         Step("import", "Import both files here",
-            if (hevyWorkouts > 0) "$hevyWorkouts Hevy workouts and ${idx.ms.size} measurement entries are in Lift Log. Importing the same file again won't create duplicates."
+            if (hevyWorkouts > 0) "${count(hevyWorkouts, "Hevy workout")} and ${count(idx.ms.size, "measurement entry", "measurement entries")} are in Lift Log. Importing the same file again won't create duplicates."
             else "Pick both files at once. Workouts keep their sets, set types (warm-up, drop, failure), RPE, supersets and notes. Exercises Hevy names differently become custom exercises, and your personal records are worked out from the full history.",
             auto = hevyWorkouts > 0, autoOnly = true),
         Step("units", "Check your units",
