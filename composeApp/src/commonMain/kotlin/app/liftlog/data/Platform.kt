@@ -86,6 +86,6 @@ object Incoming {
     val files = kotlinx.coroutines.flow.MutableStateFlow<List<Pair<String, String>>>(emptyList())
     /** True from the moment a share arrives until its files are read, so the app can show the import screen at once. */
     val busy = kotlinx.coroutines.flow.MutableStateFlow(false)
-    fun offer(f: List<Pair<String, String>>) { if (f.isNotEmpty()) files.value = files.value + f }
+    fun offer(f: List<Pair<String, String>>) { if (f.isNotEmpty()) files.value = files.value + f; println("LiftLogImport: offered ${f.size}, waiting ${files.value.size}") }
     fun take(): List<Pair<String, String>> = files.value.also { files.value = emptyList() }
 }

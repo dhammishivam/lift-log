@@ -31,8 +31,11 @@ class ImportActivity : Activity() {
         // Read on a background thread (an export can be several MB). The read permission lasts while this activity lives,
         // so it finishes only after reading.
         Thread {
-            val files = uris.mapNotNull { u -> runCatching { nameOf(u) to contentResolver.openInputStream(u)!!.use { it.readBytes().decodeToString() } }.getOrNull() } +
-                listOfNotNull(text?.let { "shared text" to it })
+            val files = uris.mapNotNull { u ->
+                runCatching { nameOf(u) to contentResolver.openInputStream(u)!!.use { it.readBytes().decodeToString() } }
+                    .onFailure { android.util.Log.w("LiftLogImport", "could not read $u", it) }.getOrNull()
+            } + listOfNotNull(text?.let { "shared text" to it })
+            android.util.Log.i("LiftLogImport", "read ${files.size} of ${uris.size} file(s): ${files.map { it.first to it.second.length }}")
             if (files.isEmpty()) Incoming.busy.value = false else Incoming.offer(files)
             runOnUiThread { finish() }
         }.start()

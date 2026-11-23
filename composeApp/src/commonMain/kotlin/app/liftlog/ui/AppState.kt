@@ -235,6 +235,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
 
     /** Files shared or opened into the app (e.g. straight from Hevy's export): import them and show the result on the Hevy guide. */
     fun importIncoming(files: List<Pair<String, String>>) = scope.launch {
+        println("LiftLogImport: importing ${files.size} shared file(s)")
         if (files.isEmpty()) return@launch
         if (stack.lastOrNull() != Screen.HevyGuide) { stack.clear(); push(Screen.HevyGuide) }
         importTexts(files)
