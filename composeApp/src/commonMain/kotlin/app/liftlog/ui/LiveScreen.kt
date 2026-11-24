@@ -1,7 +1,18 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.liftlog.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -119,7 +130,8 @@ fun ExerciseCard(st: AppState, ctx: CardCtx, ei: Int, ssi: Pair<Char, Long>?) {
     ) {
         if (ssi != null) Txt("Superset ${ssi.first}", size = 13.sp, weight = FontWeight.SemiBold, color = barColor!!)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Txt(x.name, Modifier.weight(1f).clickable { st.push(Screen.ExerciseDetail(x.id)) }.padding(vertical = 8.dp), size = 17.sp, weight = FontWeight.SemiBold, color = p.ac)
+            // Long-press the name to reorder, as in Hevy.
+            Txt(x.name, Modifier.weight(1f).combinedClickable(onLongClick = { if (ctx.items.size > 1) openReorder(st, ctx) }) { st.push(Screen.ExerciseDetail(x.id)) }.padding(vertical = 8.dp), size = 17.sp, weight = FontWeight.SemiBold, color = p.ac)
             IconBtn(Ic.dots, "Exercise options", { exerciseMenu(st, ctx, ei) })
         }
         if (pin.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(p.acs).padding(horizontal = 10.dp, vertical = 7.dp)) {
@@ -276,8 +288,7 @@ private fun exerciseMenu(st: AppState, ctx: CardCtx, ei: Int) {
     if (wt) m += MenuItem("Add warm-up sets") { addWarmups(st, ctx, ei) }
     if (wt && x.equip == "Barbell") m += MenuItem("Plate calculator") { st.push(Screen.Plate(workWeight(st, ctx, ei)?.let { w -> plainN(w) } ?: "")) }
     m += MenuItem(if (idx.pin(it.eid).isNotEmpty()) "Edit pinned note" else "Pin a note") { st.push(Screen.PinEditor(it.eid, idx.pin(it.eid))) }
-    if (ei > 0) m += MenuItem("Move up") { setAll(items.toMutableList().also { l -> l[ei] = items[ei - 1]; l[ei - 1] = it }) }
-    if (ei < n - 1) m += MenuItem("Move down") { setAll(items.toMutableList().also { l -> l[ei] = items[ei + 1]; l[ei + 1] = it }) }
+    if (n > 1) m += MenuItem("Reorder exercises") { openReorder(st, ctx) }
     m += MenuItem("Replace exercise") {
         st.push(Screen.Picker("replace") { ids -> val cur = ctx.items; ctx.set(cur.toMutableList().also { l -> if (ei < l.size) l[ei] = l[ei].copy(eid = ids[0], rest = idx.lastRest(ids[0]), sets = l[ei].sets.map { s -> WSet(t = s.t) }) }) })
     }
@@ -366,6 +377,57 @@ fun RecordList(recs: List<RecordLine>) {
             Row(Modifier.padding(top = 6.dp)) {
                 Txt(r.exercise, Modifier.weight(1f), size = 14.sp, maxLines = 1)
                 Txt(r.what, Modifier.padding(start = 8.dp), size = 14.sp, weight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+fun openReorder(st: AppState, ctx: CardCtx) {
+    val snap = ctx.items
+    st.push(Screen.Reorder(snap.map { it.eid }) { order -> ctx.set(normSS(order.map { snap[it] })) })
+}
+
+/**
+ * Exercises as short rows to drag into a new order: drag the handle, or long-press anywhere on a row. A row swaps
+ * places once it is dragged halfway over its neighbour.
+ */
+@Composable
+fun ReorderScreen(st: AppState, s: Screen.Reorder) {
+    val p = LocalPal.current; val idx = st.idx
+    val order = remember { androidx.compose.runtime.mutableStateListOf(*s.eids.indices.toList().toTypedArray()) }
+    var drag by remember { mutableStateOf<Int?>(null) }
+    var dy by remember { mutableStateOf(0f) }
+    val rowH = 64.dp; val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { rowH.toPx() }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    fun start(o: Int) { drag = o; dy = 0f; haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) }
+    fun move(o: Int, d: Float) {
+        dy += d; val cur = order.indexOf(o)
+        if (dy > rowPx / 2 && cur < order.size - 1) { order.removeAt(cur); order.add(cur + 1, o); dy -= rowPx }
+        else if (dy < -rowPx / 2 && cur > 0) { order.removeAt(cur); order.add(cur - 1, o); dy += rowPx }
+    }
+    fun end() { drag = null; dy = 0f }
+    Column(Modifier.fillMaxSize()) {
+        TopBar("Reorder exercises", left = { IconBtn(Ic.x, "Cancel", { st.close(s) }) },
+            right = { Btn("Done", { st.close(s); s.onDone(order.toList()) }, small = true, kind = BtnKind.Primary) })
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            Mu("Drag ☰ to move an exercise, or long-press a row.", Modifier.padding(vertical = 10.dp), size = 14.sp)
+            order.forEach { o ->
+                androidx.compose.runtime.key(o) {
+                    val on = drag == o; val x = idx.exOf(s.eids[o])
+                    Row(
+                        Modifier.fillMaxWidth().height(rowH).zIndex(if (on) 1f else 0f)
+                            .graphicsLayer { translationY = if (on) dy else 0f; shadowElevation = if (on) 12f else 0f; shape = RoundedCornerShape(12.dp); clip = on }
+                            .background(if (on) p.s2 else p.bg)
+                            .pointerInput(o) { detectDragGesturesAfterLongPress(onDragStart = { start(o) }, onDragEnd = { end() }, onDragCancel = { end() }) { ch, d -> ch.consume(); move(o, d.y) } }
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(40.dp).clip(CircleShape).background(p.s2)) { MuscleThumb(x, Modifier.fillMaxSize()) }
+                        Txt(x.name, Modifier.weight(1f).padding(horizontal = 12.dp), size = 16.sp, weight = FontWeight.SemiBold, maxLines = 1)
+                        Box(Modifier.size(44.dp).pointerInput(o) { detectDragGestures(onDragStart = { start(o) }, onDragEnd = { end() }, onDragCancel = { end() }) { ch, d -> ch.consume(); move(o, d.y) } },
+                            contentAlignment = Alignment.Center) { Icon(Ic.grip, "Drag to reorder ${x.name}", Modifier.size(22.dp), tint = p.mu) }
+                    }
+                }
             }
         }
     }

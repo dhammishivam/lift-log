@@ -93,6 +93,7 @@ private fun ScreenHost(st: AppState, s: Screen) {
         is Screen.WorkoutDetail -> WorkoutDetailScreen(st, s)
         is Screen.ExerciseDetail -> ExerciseDetailScreen(st, s)
         is Screen.Picker -> PickerScreen(st, s)
+        is Screen.Reorder -> ReorderScreen(st, s)
         is Screen.ExEditor -> ExEditorScreen(st, s)
         is Screen.RoutineEditor -> RoutineEditorScreen(st, s)
         is Screen.MeasureEditor -> MeasureEditorScreen(st, s)

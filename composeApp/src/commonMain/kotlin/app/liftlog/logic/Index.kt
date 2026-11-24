@@ -34,7 +34,15 @@ class Index(val data: Data) {
     init {
         val m = LinkedHashMap<String, Exercise>()
         LIBRARY.forEach { m[it.id] = it }
-        data.customs.values.forEach { m[it.id] = Exercise(it.id, it.name, it.muscle, it.equip, it.type, true, it.cue) }
+        // A custom exercise with a library name (often one brought over from Hevy) replaces that library entry, so the
+        // list shows it once; it borrows the library's muscle, equipment and cue when it has none of its own.
+        val byName = LIBRARY.associateBy { it.name.lowercase() }
+        data.customs.values.forEach { c ->
+            val lib = byName[c.name.lowercase()]
+            if (lib != null) m.remove(lib.id)
+            m[c.id] = Exercise(c.id, c.name, if (c.muscle == "Other" && lib != null) lib.muscle else c.muscle,
+                if (c.equip == "Other" && lib != null) lib.equip else c.equip, c.type, true, c.cue ?: lib?.cue)
+        }
         ex = m
         val hh = HashMap<String, MutableList<HEntry>>()
         val pr = HashMap<String, PrMarks>()

@@ -82,9 +82,9 @@ private fun workoutMenu(st: AppState, s: Screen.WorkoutDetail, w: Workout) {
 @Composable
 fun ExercisesTab(st: AppState) {
     val idx = st.idx; val q = st.exq.trim().lowercase()
-    val all = idx.ex.values.filter { (st.exg == "All" || (GROUP[it.muscle] ?: "Other") == st.exg) && (q.isEmpty() || it.name.lowercase().contains(q) || it.muscle.lowercase().contains(q)) }
-    val done = all.filter { idx.h[it.id] != null }.sortedByDescending { idx.h[it.id]!![0].start }
-    val rest = all.filter { idx.h[it.id] == null }.sortedBy { it.name }
+    val all = searchExercises(idx.ex.values.filter { st.exg == "All" || (GROUP[it.muscle] ?: "Other") == st.exg }, q)
+    val done = all.filter { idx.h[it.id] != null }.let { d -> if (q.isEmpty()) d.sortedByDescending { idx.h[it.id]!![0].start } else d }
+    val rest = all.filter { idx.h[it.id] == null }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
         item { SearchBox(st.exq, "Search exercises") { st.exq = it } }
         item { ChipRow { CHIPS.forEach { c -> Chip(c, st.exg == c) { st.exg = c } } } }
@@ -245,9 +245,9 @@ fun ExerciseDetailScreen(st: AppState, s: Screen.ExerciseDetail) {
 fun PickerScreen(st: AppState, s: Screen.Picker) {
     val idx = st.idx; val q = s.q.trim().lowercase()
     fun inG(x: Exercise) = s.g == "All" || (GROUP[x.muscle] ?: "Other") == s.g
-    val all = idx.ex.values.filter { inG(it) && (q.isEmpty() || it.name.lowercase().contains(q) || it.equip.lowercase().contains(q)) }
+    val all = searchExercises(idx.ex.values.filter { inG(it) }, q)
     val rec = if (q.isEmpty()) all.filter { idx.h[it.id] != null }.sortedByDescending { idx.h[it.id]!![0].start }.take(8) else emptyList()
-    val rest = all.filter { it !in rec }.sortedBy { it.name }
+    val rest = all.filter { it !in rec }
     val single = s.mode != "add"
     fun pick(id: String) {
         if (single) { st.close(s); s.onDone(listOf(id)) } else { if (id in s.sel) s.sel.remove(id) else s.sel.add(id) }

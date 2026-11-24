@@ -319,14 +319,14 @@ private fun thumbFocus(t: Map<String, Double>): ThumbFocus? {
 
 /**
  * A small picture of the body zoomed onto what an exercise works: the main muscle in the accent colour, helpers
- * lighter. Cardio and other exercises with no muscle map show a heart instead.
+ * lighter. Cardio shows a heart, and anything else with no muscle map a dumbbell.
  */
 @Composable
 fun MuscleThumb(x: app.liftlog.model.Exercise, modifier: Modifier = Modifier) {
     val p = LocalPal.current
     val t = androidx.compose.runtime.remember(x.id, x.name, x.muscle) { app.liftlog.logic.muscleTargets(x) }
     val f = androidx.compose.runtime.remember(t) { thumbFocus(t) }
-    if (f == null) { Box(modifier, contentAlignment = Alignment.Center) { androidx.compose.material3.Icon(Ic.heart, null, Modifier.size(20.dp), tint = p.mu) }; return }
+    if (f == null) { Box(modifier, contentAlignment = Alignment.Center) { androidx.compose.material3.Icon(if (x.muscle == "Cardio") Ic.heart else Ic.dumb, null, Modifier.size(20.dp), tint = p.mu) }; return }
     val top = t.values.max()
     Canvas(modifier) {
         val a = f.area; val side = maxOf(a.width, a.height, 200f) * 1.5f

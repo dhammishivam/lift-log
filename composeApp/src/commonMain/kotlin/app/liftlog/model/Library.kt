@@ -239,9 +239,13 @@ Chest Supported Incline Row (Dumbbell)|Chest on a 30–45° bench. Row to the hi
 
 fun slug(s: String): String = s.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
+/** The core list (Hevy's names) followed by the larger public-domain library, which brings its own form cues. */
 val LIBRARY: List<Exercise> = LIB_TXT.lines().filter { it.isNotBlank() }.map { line ->
     val p = line.split("|")
     Exercise(id = "b:" + slug(p[0]), name = p[0], muscle = p[1], equip = p[2], type = p[3])
+} + MORE_TXT.lines().filter { it.isNotBlank() }.map { line ->
+    val p = line.split("|")
+    Exercise(id = "b:" + slug(p[0]), name = p[0], muscle = p[1], equip = p[2], type = p[3], cue = p.getOrNull(4)?.takeIf { it.isNotBlank() })
 }
 
 val CUES: Map<String, String> = CUE_TXT.lines().filter { it.contains("|") }.associate { l ->
@@ -291,4 +295,27 @@ fun measureProblem(key: String, v: Double): String? {
         else -> v >= 0
     }
     return if (ok) null else "$label looks wrong. Check the number."
+}
+
+/** Ids of the core list, whose names match Hevy's; search puts these before the larger library. */
+val CORE_IDS: Set<String> by lazy { LIB_TXT.lines().filter { it.isNotBlank() }.mapTo(HashSet()) { "b:" + slug(it.substringBefore('|')) } }
+
+private val SYN = mapOf("db" to "dumbbell", "bb" to "barbell", "kb" to "kettlebell", "ez" to "ez bar", "ohp" to "overhead press",
+    "rdl" to "romanian deadlift", "bw" to "bodyweight", "pushup" to "push up", "pullup" to "pull up", "chinup" to "chin up", "situp" to "sit up")
+
+/**
+ * Exercises matching a search, best first. Every word must appear in the name, equipment or muscle ("incline db"
+ * finds Incline Bench Press (Dumbbell)); names that start with the search come first, then names with a word that
+ * does, then the rest, with the core list ahead of the larger library at each step.
+ */
+fun searchExercises(all: Collection<Exercise>, query: String): List<Exercise> {
+    val q = query.trim().lowercase()
+    if (q.isEmpty()) return all.sortedBy { it.name }
+    val words = q.split(Regex("\\s+")).flatMap { (SYN[it] ?: it).split(" ") }
+    return all.mapNotNull { x ->
+        val n = x.name.lowercase(); val hay = "$n ${x.equip.lowercase()} ${x.muscle.lowercase()}"
+        if (!words.all { it in hay }) return@mapNotNull null
+        val rank = when { n.startsWith(q) -> 0; n.split(' ', '(', '-').any { it.startsWith(words[0]) } -> 1; else -> 2 }
+        Triple(x, rank, if (x.id in CORE_IDS || x.custom) 0 else 1)
+    }.sortedWith(compareBy({ it.second }, { it.third }, { it.first.name.length }, { it.first.name })).map { it.first }
 }

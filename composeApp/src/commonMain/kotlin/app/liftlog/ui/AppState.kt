@@ -32,6 +32,8 @@ sealed class Screen {
     /** [fresh]: just saved from a live workout, so the page opens with a short summary. */
     class WorkoutDetail(val id: String, val fresh: Boolean = false) : Screen()
     class ExerciseDetail(val id: String) : Screen() { var k by mutableStateOf<String?>(null); var r by mutableStateOf("All"); var cmp by mutableStateOf<String?>(null) }
+    /** Drag exercises into a new order; [onDone] gets the old indices in their new order. */
+    class Reorder(val eids: List<String>, val onDone: (List<Int>) -> Unit) : Screen()
     class Picker(val mode: String, val onDone: (List<String>) -> Unit) : Screen() { var q by mutableStateOf(""); var g by mutableStateOf("All"); val sel = mutableStateListOf<String>() }
     class ExEditor(val existing: CustomEx?, val prefill: String = "", val onSaved: ((String) -> Unit)? = null) : Screen()
     class RoutineEditor(draft: Routine, val isNew: Boolean) : Screen() { var r by mutableStateOf(draft); val start = nowMs() }
