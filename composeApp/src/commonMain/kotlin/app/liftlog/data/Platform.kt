@@ -65,6 +65,8 @@ interface Platform {
     fun shareCard(card: ShareCard): Boolean = false
     /** Other apps can hand their exports straight to Lift Log (Android's share and open-with). */
     val receivesShares: Boolean get() = false
+    /** The dev build (com.krishiv.liftlog.dev): shows developer tools such as a test crash for Crashlytics. */
+    val devBuild: Boolean get() = false
     /** Opens another installed app, e.g. Hevy to export from, at [link] if given. False if it isn't installed or this can't be done here. */
     fun openApp(pkg: String, link: String? = null): Boolean = false
 }

@@ -9,6 +9,14 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+// Crashlytics turns on once composeApp/google-services.json exists (CI writes it from a secret). It must list both
+// com.krishiv.liftlog and com.krishiv.liftlog.dev, so dev crashes land in their own Firebase app, not the Play one.
+val firebase = file("google-services.json").exists()
+if (firebase) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+    apply(plugin = libs.plugins.firebase.crashlytics.get().pluginId)
+}
+
 kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
@@ -51,6 +59,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.sqldelight.android)
             implementation(libs.ktor.client.okhttp)
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.crashlytics)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native)
@@ -70,6 +80,8 @@ android {
         // CI passes its run number so every uploaded build has a higher version code.
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0.0"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
+        manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
     }
     buildFeatures { buildConfig = true }
     testOptions { unitTests { isIncludeAndroidResources = true } }
@@ -97,6 +109,18 @@ android {
             // The AI coach stays out of Play builds until it has an in-app report button (Play's AI-generated content policy).
             buildConfigField("boolean", "COACH", "false")
             if (ks != null) signingConfig = signingConfigs.getByName("upload")
+        }
+        // The build we test with: same optimised code as release, but its own package (com.krishiv.liftlog.dev),
+        // name and orange icon, so it installs next to the Play version and its crashes stay out of the Play dashboard.
+        create("dev") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            matchingFallbacks += "release"
+            buildConfigField("boolean", "COACH", "true")
+            manifestPlaceholders["appLabel"] = "Lift Log Dev"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher_dev"
+            signingConfig = if (ks != null) signingConfigs.getByName("upload") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {

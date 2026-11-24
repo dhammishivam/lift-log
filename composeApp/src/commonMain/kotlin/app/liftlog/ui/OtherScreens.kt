@@ -251,6 +251,9 @@ fun SettingsScreenView(st: AppState) {
                     Btn("Source code", { st.platform.openUrl(SOURCE_URL) }, small = true)
                 }
             }
+            if (st.platform.devBuild) BoxCard("Developer", "Dev build. Crashes here go to the dev app in Firebase, not the Play one. Use this to check crash reporting end to end.") {
+                Btn("Send a test crash", { throw RuntimeException("Test crash from Lift Log Dev (Settings → Developer)") }, small = true, kind = BtnKind.Danger)
+            }
             Mu("${count(st.idx.ws.size, "workout")} · ${count(st.idx.rs.size, "routine")} · ${count(st.idx.ms.size, "measurement entry", "measurement entries")}. Everything is stored on this phone (${st.platform.name}).", Modifier.padding(top = 8.dp))
         }
     }

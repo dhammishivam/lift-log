@@ -166,6 +166,7 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     override fun updateWidget(info: WidgetInfo) { runCatching { LiftWidget.save(ctx, info) } }
 
     override val receivesShares: Boolean get() = true
+    override val devBuild: Boolean get() = act.packageName.endsWith(".dev")
 
     override fun openApp(pkg: String, link: String?): Boolean {
         // A deep link first (it lands closer to the right screen), then the app's normal start screen.

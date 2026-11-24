@@ -64,6 +64,22 @@ jobs:
           KEY_B64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEY_B64" ]; then echo "$KEY_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"; echo "UPLOAD_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"; else echo "No upload key secret; the release bundle will be unsigned."; fi
+      - name: Firebase config (turns on Crashlytics when the secret is set)
+        env:
+          GS_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -n "$GS_B64" ]; then echo "$GS_B64" | base64 -d > composeApp/google-services.json; echo "Crashlytics on"; else echo "No GOOGLE_SERVICES_JSON_BASE64 secret; building without Crashlytics."; fi
+      - name: Build dev APK (com.krishiv.liftlog.dev, installs next to the Play version)
+        run: ./gradlew :composeApp:assembleDev --stacktrace
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lift-log-dev-apk
+          path: composeApp/build/outputs/apk/dev/*.apk
       - name: Build release bundle (minified)
         run: ./gradlew :composeApp:bundleRelease --stacktrace
         env:
@@ -87,6 +103,8 @@ jobs:
           cp composeApp/build/outputs/apk/debug/composeApp-debug.apk LiftLog-debug.apk
           gh release view latest >/dev/null 2>&1 || gh release create latest --prerelease --title "Latest build" --notes "Debug APK built automatically from main. Install on Android: download LiftLog-debug.apk and open it."
           gh release upload latest LiftLog-debug.apk --clobber
+          cp composeApp/build/outputs/apk/dev/composeApp-dev.apk LiftLog-dev.apk
+          gh release upload latest LiftLog-dev.apk --clobber
       - name: Attach the signed bundle to a draft release (visible only to repo owners)
         if: github.ref == 'refs/heads/main' && env.UPLOAD_KEYSTORE != ''
         env:

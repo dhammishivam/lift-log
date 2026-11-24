@@ -17,3 +17,5 @@ xcuserdata/
 play-upload/
 __pycache__/
 .devicebridge/
+# Firebase config comes from a CI secret
+composeApp/google-services.json
