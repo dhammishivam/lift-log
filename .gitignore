@@ -16,3 +16,4 @@ xcuserdata/
 # Play upload bundles dropped on the Mac
 play-upload/
 __pycache__/
+.devicebridge/
