@@ -61,6 +61,8 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.crashlytics)
+            // Firebase pulls in an old Fragment through Play services; activity-result APIs need 1.3+.
+            implementation("androidx.fragment:fragment:1.8.5")
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native)
