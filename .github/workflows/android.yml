@@ -64,11 +64,12 @@ jobs:
           KEY_B64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEY_B64" ]; then echo "$KEY_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"; echo "UPLOAD_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"; else echo "No upload key secret; the release bundle will be unsigned."; fi
-      - name: Firebase config (turns on Crashlytics when the secret is set)
+      - name: Firebase config (turns on Crashlytics)
+        # The repo is public, so google-services.json is committed encrypted and unlocked with the upload-key password.
         env:
-          GS_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          PW: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$GS_B64" ]; then echo "$GS_B64" | base64 -d > composeApp/google-services.json; echo "Crashlytics on"; else echo "No GOOGLE_SERVICES_JSON_BASE64 secret; building without Crashlytics."; fi
+          if [ -n "$PW" ]; then openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in composeApp/google-services.json.enc -out composeApp/google-services.json -pass env:PW && echo "Crashlytics on"; else echo "No password secret; building without Crashlytics."; fi
       - name: Build dev APK (com.krishiv.liftlog.dev, installs next to the Play version)
         run: ./gradlew :composeApp:assembleDev --stacktrace
         env:

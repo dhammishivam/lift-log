@@ -9,7 +9,8 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
-// Crashlytics turns on once composeApp/google-services.json exists (CI writes it from a secret). It must list both
+// Crashlytics turns on once composeApp/google-services.json exists. CI decrypts it from google-services.json.enc
+// (Firebase project lift-log-f7d17); for local builds, put the plain file there (git-ignored). It lists both
 // com.krishiv.liftlog and com.krishiv.liftlog.dev, so dev crashes land in their own Firebase app, not the Play one.
 val firebase = file("google-services.json").exists()
 if (firebase) {
