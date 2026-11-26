@@ -167,6 +167,8 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
 
     override val receivesShares: Boolean get() = true
     override val devBuild: Boolean get() = act.packageName.endsWith(".dev")
+    // Builds without google-services.json have no Firebase app, so getInstance() throws: then there is nothing to switch.
+    override fun setCrashReports(on: Boolean) { runCatching { com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = on } }
 
     override fun openApp(pkg: String, link: String?): Boolean {
         // A deep link first (it lands closer to the right screen), then the app's normal start screen.

@@ -246,6 +246,14 @@ fun SettingsScreenView(st: AppState) {
                 Btn("Save", { st.setSettings { it.copy(apiKey = key.trim().ifEmpty { null }, model = model.trim().ifEmpty { null }) }; st.say("Coach settings saved") }, small = true)
             }
             BoxCard("About", "Lift Log ${st.platform.appVersion}. Your workouts, routines and measurements are stored only on this phone.") {
+                // Crash reports carry the error and device details only, never anything you logged.
+                Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Txt("Send crash reports", size = 15.sp, weight = FontWeight.SemiBold)
+                        Mu("If the app crashes, send the error and device model so it can be fixed. Never includes your workouts.", size = 13.sp)
+                    }
+                    Toggle(set.crashReports != false) { st.setSettings { it.copy(crashReports = it.crashReports == false) } }
+                }
                 FlowRowX {
                     Btn("Privacy policy", { st.platform.openUrl(PRIVACY_URL) }, small = true)
                     Btn("Source code", { st.platform.openUrl(SOURCE_URL) }, small = true)

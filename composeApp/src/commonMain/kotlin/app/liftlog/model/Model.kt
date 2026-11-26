@@ -123,6 +123,8 @@ data class Settings(
     val cele: Boolean? = null,
     /** Shown on the Profile tab. */
     val name: String? = null,
+    /** Send crash reports (Firebase Crashlytics). Off stops them; null means on. */
+    val crashReports: Boolean? = null,
     /** Steps of the Move from Hevy guide the user has ticked off. */
     val hevy: List<String>? = null,
     /** App only: Anthropic API key and model for the coach. Never exported. */

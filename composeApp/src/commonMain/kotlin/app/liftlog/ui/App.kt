@@ -39,6 +39,7 @@ fun App(platform: Platform) {
         LaunchedEffect(store.loaded) {
             if (!store.loaded) return@LaunchedEffect
             platform.setActionHandler { st.handleAction(it) }
+            launch { snapshotFlow { st.data.settings.crashReports != false }.distinctUntilChanged().collect { platform.setCrashReports(it) } }
             launch { snapshotFlow { st.liveInfo() }.distinctUntilChanged().collect { platform.liveWorkout(it) } }
             launch { snapshotFlow { widgetInfo(st.idx, nowMs()) }.distinctUntilChanged().collect { platform.updateWidget(it) } }
             // Files shared into the app, e.g. Hevy's export opened with Lift Log.
