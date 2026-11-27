@@ -75,6 +75,7 @@ fun LiveScreen(st: AppState) {
         LaunchedEffect(st.focusEx, a.exercises.size) { st.focusEx?.let { i -> if (i < a.exercises.size) { list.animateScrollToItem(i); st.focusEx = null } } }
         LazyColumn(Modifier.weight(1f), state = list, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
             if (a.exercises.isEmpty()) item { EmptyState(Ic.dumb, "Get started", "Add an exercise to start your workout.") }
+            firstTip(st, a)?.let { (k, t) -> item(key = "tip") { TipCard(t) { st.setSettings { s0 -> s0.copy(tips = (s0.tips ?: emptyList()) + k) } } } }
             items(a.exercises.size) { ei -> ExerciseCard(st, ctx, ei, ss(a.exercises[ei].ss)) }
             item {
                 Btn("Add exercise", { pickToAdd(st, ctx) }, Modifier.fillMaxWidth().padding(top = 16.dp), kind = BtnKind.Primary, icon = Ic.plus)
@@ -430,5 +431,30 @@ fun ReorderScreen(st: AppState, s: Screen.Reorder) {
                 }
             }
         }
+    }
+}
+
+/** One tip at a time during the first workout, each shown until "Got it". */
+private fun firstTip(st: AppState, a: app.liftlog.model.Active): Pair<String, String>? {
+    if (a.editId != null || st.data.workouts.isNotEmpty() || a.exercises.isEmpty()) return null
+    val seen = st.data.settings.tips.orEmpty()
+    val done = a.exercises.sumOf { e -> e.sets.count { it.done == true } }
+    return when {
+        done == 0 && "tick" !in seen -> "tick" to "Tap ✓ when you finish a set. The rest timer starts on its own."
+        done >= 1 && st.restEnd > 0 && "lock" !in seen -> "lock" to
+            if (st.platform.name == "Android") "Lock your phone if you like: the rest countdown and your next set stay on the lock screen, with a button to complete it."
+            else "The rest timer runs at the bottom. Add or take off 15 seconds, or skip it."
+        done >= 3 && "order" !in seen -> "order" to "Long-press an exercise name to reorder. ⋯ has warm-ups, notes and supersets."
+        else -> null
+    }
+}
+
+@Composable
+private fun TipCard(text: String, onDone: () -> Unit) {
+    val p = LocalPal.current
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(14.dp)).background(p.acs).padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Txt(text, Modifier.weight(1f).padding(vertical = 6.dp), size = 14.sp)
+        Btn("Got it", onDone, kind = BtnKind.Ghost, small = true)
     }
 }

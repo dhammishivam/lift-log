@@ -180,6 +180,10 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     }
 
     override fun shareCard(card: ShareCard): Boolean = ShareImage.share(act, card)
+    override val canPinWidget: Boolean get() = runCatching { android.appwidget.AppWidgetManager.getInstance(ctx).isRequestPinAppWidgetSupported }.getOrDefault(false)
+    override fun pinWidget() {
+        runCatching { android.appwidget.AppWidgetManager.getInstance(ctx).requestPinAppWidget(android.content.ComponentName(ctx, LiftWidget::class.java), null, null) }
+    }
     override fun shareText(text: String, title: String): Boolean = runCatching {
         act.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), title)); true
     }.getOrDefault(false)

@@ -125,6 +125,10 @@ data class Settings(
     val name: String? = null,
     /** Send crash reports (Firebase Crashlytics). Off stops them; null means on. */
     val crashReports: Boolean? = null,
+    /** The first-open welcome was shown (and finished or skipped). */
+    val onb: Boolean? = null,
+    /** One-time tips the user has dismissed ("tick", "lock", "order"). */
+    val tips: List<String>? = null,
     /** Steps of the Move from Hevy guide the user has ticked off. */
     val hevy: List<String>? = null,
     /** App only: Anthropic API key and model for the coach. Never exported. */

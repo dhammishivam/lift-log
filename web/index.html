@@ -749,11 +749,11 @@ function vWorkout(){const ws=weekStart(Date.now()),wk=WS.filter(w=>w.start>=ws);
   const fl=[...new Set(RS.map(r=>r.folder||''))].sort((a,b)=>(a===''?1:0)-(b===''?1:0)||a.localeCompare(b));
   const rs=fl.length>1||(fl[0]||'')!==''?fl.map(f=>{const list=RS.filter(r=>(r.folder||'')===f),cl=UI.fold[f];return`<button class="fh ${cl?'cl':''}" data-a="fold" data-n="${esc(f)}">${I.down}${esc(f||'Other routines')} <span>${list.length}</span></button>${cl?'':list.map(rc).join('')}`}).join(''):RS.map(rc).join('');
   const gl=settings().goal||0,{cur}=weekRuns(),C=2*Math.PI*26,pr=gl?Math.min(1,wk.length/gl):0,tt=dur(wk.reduce((a,w)=>a+w.end-w.start,0));
-  return`<div class="goal">${gl?`<svg viewBox="0 0 64 64" class="ringsv" role="img" aria-label="${wk.length} of ${gl} workouts this week"><circle cx="32" cy="32" r="26" style="stroke:var(--s2)" stroke-width="7" fill="none"/><circle cx="32" cy="32" r="26" style="stroke:var(--ac)" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="${(C*pr).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/><text x="32" y="38" text-anchor="middle" style="fill:var(--ink);stroke:none;font:700 19px var(--num)">${wk.length}/${gl}</text></svg>`:''}<div><b>${gl?(wk.length>=gl?'Weekly goal done':`${gl-wk.length} more to hit your goal`):`${wk.length} workout${wk.length===1?'':'s'} this week`}</b><span>${tt} trained · ${cur}-week streak</span></div><button class="btn sm" data-a="goal">${gl?'Edit':'Set goal'}</button></div>
+  return`${WS.length||gl?`<div class="goal">${gl?`<svg viewBox="0 0 64 64" class="ringsv" role="img" aria-label="${wk.length} of ${gl} workouts this week"><circle cx="32" cy="32" r="26" style="stroke:var(--s2)" stroke-width="7" fill="none"/><circle cx="32" cy="32" r="26" style="stroke:var(--ac)" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="${(C*pr).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/><text x="32" y="38" text-anchor="middle" style="fill:var(--ink);stroke:none;font:700 19px var(--num)">${wk.length}/${gl}</text></svg>`:''}<div><b>${gl?(wk.length>=gl?'Weekly goal done':`${gl-wk.length} more to hit your goal`):`${wk.length} workout${wk.length===1?'':'s'} this week`}</b><span>${tt} trained · ${cur}-week streak</span></div><button class="btn sm" data-a="goal">${gl?'Edit':'Set goal'}</button></div>`:''}
   <p class="lbl">Quick start</p><button class="big" data-a="startEmpty">${I.plus}<span>Start empty workout</span></button>
   <div class="btns" style="margin-top:10px"><button class="btn sm" data-a="tool" data-t="plate">Plate calculator</button><button class="btn sm" data-a="tool" data-t="orm">1RM calculator</button><button class="btn sm" data-a="coach">${I.chat} Ask the coach</button></div>
-  <div class="sec"><p class="lbl">Routines</p>${RS.length?`<div class="btns"><button class="ib" data-a="rtLink" aria-label="Add routine from a link" style="color:var(--ac)">${I.imp}</button><button class="btn sm" data-a="programs">${I.cal} Programs</button><button class="btn sm" data-a="newRoutine">${I.plus} New routine</button></div>`:''}</div>
-  ${rs||`<button class="startc pri" data-a="programs"><i>${I.trophy}</i><span><b>Use a program</b><small>Answer a few questions and pick a proven plan for your week: full body, upper / lower, push / pull / legs and more.</small></span>${I.right}</button>
+  <div class="sec"><p class="lbl">Routines</p>${RS.length?`<div class="btns"><button class="btn sm" data-a="programs">${I.cal} Programs</button><button class="btn sm" data-a="newRoutine">${I.plus} New routine</button></div>`:''}</div>
+  ${rs?rs+`<button class="btn wide" style="background:none;color:var(--ac)" data-a="rtLink">${I.share} Add a routine from a link</button>`:`<button class="startc pri" data-a="programs"><i>${I.trophy}</i><span><b>Use a program</b><small>Answer a few questions and pick a proven plan for your week: full body, upper / lower, push / pull / legs and more.</small></span>${I.right}</button>
   <button class="startc" data-a="newRoutine"><i>${I.plus}</i><span><b>Build your own</b><small>Pick exercises, sets and rest times and save it as a routine.</small></span>${I.right}</button>
   <button class="startc" data-a="rtLink"><i>${I.share}</i><span><b>Got a routine link?</b><small>Paste the link a friend sent you to add their routine.</small></span>${I.right}</button>
   ${WS.length?'':`<button class="startc" data-a="hevyGuide"><i>${I.imp}</i><span><b>Coming from Hevy?</b><small>Bring your workouts, measurements and routines across in a couple of minutes.</small></span>${I.right}</button>`}
@@ -967,7 +967,7 @@ let REST={end:0,total:0};
 R.live=()=>{const m=A;if(!m)return'';const s=liveStats(m),ed=!!m.editId;
   return`<div class="hd"><button class="ib" data-a="minimize" aria-label="Minimise">${I.down}</button><h2>${ed?'Edit workout':'Log workout'}</h2><button class="btn pri sm" data-a="finish">${ed?'Save':'Finish'}</button></div>
   <div class="stats"><div><small>Duration</small><b class="ac" ${ed?'':'data-tick'}>${ed?dur(m.end-m.start):clock(Date.now()-m.start)}</b></div><div><small>Volume</small><b id="lvol">${Wv(s.vol)}</b></div><div><small>Sets</small><b id="lsets">${s.sets}</b></div></div>
-  <div class="bd">${m.exercises.length?cards(m,'live'):`<div class="lempty">${I.dumb}<b>Get started</b><p class="mu">Add an exercise to start your workout.</p></div>`}
+  <div class="bd">${tipHTML(m)}${m.exercises.length?cards(m,'live'):`<div class="lempty">${I.dumb}<b>Get started</b><p class="mu">Add an exercise to start your workout.</p></div>`}
   <button class="btn pri wide addx" data-a="addEx">${I.plus} Add exercise</button>
   <div class="btns" style="margin-top:10px"><button class="btn wide" data-a="minimize">Minimise</button><button class="btn dng wide" data-a="discard">${ed?'Cancel edit':'Discard workout'}</button></div></div>
   <div class="rb" id="rb" hidden><span class="rbp" id="rbp"></span><button class="btn sm" data-a="rest-">−15</button><div class="rbt"><span id="rbt">0:00</span><small>Rest</small></div><button class="btn sm" data-a="rest+">+15</button><button class="btn sm pri" data-a="restskip">Skip</button></div>`};
@@ -1055,7 +1055,7 @@ function doneHero(w){const n=WS.filter(x=>x.start<=w.start).length,{cur}=weekRun
 R.wd=st=>{const w=S.docs[st.id];if(!w)return`<div class="hd"><button class="ib" data-a="close" aria-label="Back">${I.left}</button><h2>Workout</h2><span style="width:44px"></span></div><div class="bd"><p class="mu">This workout was deleted.</p></div>`;
   const pm=PRM[w.id]||{n:0,m:{}},ssi=ssInfo(w),cmp=compare(wVol(w));
   return`<div class="hd"><button class="ib" data-a="close" aria-label="Back">${I.left}</button><h2>Workout</h2><button class="ib" data-a="wmenu" data-id="${w.id}" aria-label="Workout options">${I.dots}</button></div>
-  <div class="bd">${st.fresh?doneHero(w):''}<div class="wh"><h2>${esc(w.title)}</h2><div class="mu">${dLong(w.start)} · ${tShort(w.start)}</div></div>
+  <div class="bd">${st.fresh?doneHero(w)+firstSteps(w):''}<div class="wh"><h2>${esc(w.title)}</h2><div class="mu">${dLong(w.start)} · ${tShort(w.start)}</div></div>
   ${pst([['Time',dur(w.end-w.start)],['Volume',cN(toU(wVol(w)))+' '+UNIT()],['Sets',wSets(w)],['Records',pm.n]])}
   ${cmp?`<p class="cmp">${I.dumb}${cmp}</p>`:''}${recBox(wRecs(w))}<button class="btn sm" style="margin:6px 0 4px" data-a="share" data-id="${w.id}">${I.share} Share</button>${musclesWorked(regionSetsOf(w.exercises))}${w.notes?`<p>${esc(w.notes)}</p>`:''}
   ${w.exercises.map((it,ei)=>{const x=ex(it.eid),q=ssi(it.ss);let n=0;return`<div class="wdx${q?' card ssc':''}"${q?` style="--sc:${q.c}"`:''}>${q?`<span class="sst">Superset ${q.L}</span>`:''}<button class="exn" data-a="exinfo" data-id="${x.id}">${esc(x.name)}</button>${it.note?`<p class="note2">${esc(it.note)}</p>`:''}<div>${it.sets.map((s,si)=>{const p=pm.m[ei+':'+si];return`<div class="sr"><span class="n t-${s.t}">${s.t==='n'?++n:s.t.toUpperCase()}</span><span>${esc(fmtSet(x.type,s))}</span>${p?`<span class="prt">${I.trophy}${p.map(k=>PRS[k]).join(' · ')}</span>`:'<span></span>'}</div>`}).join('')}</div></div>`}).join('')}</div>`};
@@ -1455,6 +1455,31 @@ async function addProgram(sh){const st=sh.st,g=PROGRAMS.find(x=>x.id===st.pick),
 /* ---------- pinned notes ---------- */
 // Reorder: exercises as short rows; drag the ☰ handle (or long-press a row) and drop where it should go.
 function openReorder(sh){const items=clone(modelOf(sh).exercises);openSheet('reorder',{target:sh,items,order:items.map((_,i)=>i)})}
+/* ---------- new users: welcome, first-workout tips, next steps (same as the Android app) ---------- */
+let WELC=0;
+function maybeWelcome(){if(WELC)return;WELC=1;const se=settings();if(se.onb||WS.length||RS.length||A)return;openSheet('welc',{name:se.name||'',unit:se.unit||'kg',goal:se.goal||0})}
+R.welc=st=>`<div class="hd"><span style="width:44px"></span><h2></h2><button class="btn sm" style="background:none" data-a="wgo" data-v="skip">Skip</button></div>
+  <div class="bd"><h2 style="margin:0;font-size:28px">Welcome to Lift Log</h2><p class="mu" style="margin:4px 0 8px">Log your sets, beat your last session, see every muscle you trained.</p>
+  <label class="fld"><span>Your name (optional)</span><input data-f="wname" maxlength="40" placeholder="Shown on your profile" value="${esc(st.name)}"></label>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px"><span class="mu">Weights in</span><div class="seg">${['kg','lb'].map(u=>`<button data-a="wunit" data-u="${u}" class="${st.unit===u?'on':''}">${u}</button>`).join('')}</div></div>
+  <p class="mu" style="margin:16px 0 8px">Workouts a week</p><div class="chips">${[2,3,4,5,6].map(n=>`<button class="chip ${st.goal===n?'on':''}" data-a="wgoal" data-n="${n}">${n}</button>`).join('')}</div>
+  <p class="lbl">How do you want to start?</p>
+  <button class="startc pri" data-a="wgo" data-v="prog"><i>${I.trophy}</i><span><b>Pick a program</b><small>A proven plan for your week, matched to you.</small></span>${I.right}</button>
+  <button class="startc" data-a="wgo" data-v="own"><i>${I.plus}</i><span><b>Build my own routine</b><small>Choose exercises, sets and rest.</small></span>${I.right}</button>
+  <button class="startc" data-a="wgo" data-v="hevy"><i>${I.imp}</i><span><b>Import from Hevy</b><small>Bring your history across in a couple of minutes.</small></span>${I.right}</button>
+  <button class="startc" data-a="wgo" data-v="empty"><i>${I.play}</i><span><b>Just start a workout</b><small>Add exercises as you go.</small></span>${I.right}</button></div>`;
+function finishWelcome(sh,v){const st=sh.st,se=settings();put('settings',{...se,kind:'settings',onb:true,name:(st.name||'').trim()||se.name||null,unit:st.unit,goal:st.goal||se.goal||0});
+  closeSheet(sh);UI.tab='workout';location.hash='workout';refresh();renderMain(true);
+  if(v==='prog')openPrograms();else if(v==='own')editRoutine(blankRoutine(),true);else if(v==='hevy')openSheet('hevy',{});
+  else if(v==='empty')startWorkout(()=>({kind:'active',id:'w_'+rid(),start:Date.now(),title:'',routineId:null,exercises:[]}))}
+function tipHTML(m){if(m.editId||WS.length||!m.exercises.length)return'';const seen=settings().tips||[],done=m.exercises.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0);
+  const t=done===0&&!seen.includes('tick')?['tick','Tap ✓ when you finish a set. The rest timer starts on its own.']
+    :done>=1&&REST.end>Date.now()&&!seen.includes('lock')?['lock','The rest timer runs at the bottom. Add or take off 15 seconds, or skip it.']
+    :done>=3&&!seen.includes('order')?['order','Long-press an exercise name to reorder. ⋯ has warm-ups, notes and supersets.']:null;
+  return t?`<div class="box" style="display:flex;align-items:center;gap:8px;background:var(--acs);margin:8px 0 4px;padding:8px 8px 8px 14px"><span style="flex:1;font-size:14px">${t[1]}</span><button class="btn sm" style="background:none" data-a="tipok" data-k="${t[0]}">Got it</button></div>`:''}
+function firstSteps(w){if(WS.length!==1)return'';const noGoal=!(settings().goal>0),saveIt=!w.routineId&&!RS.length;if(!noGoal&&!saveIt)return'';
+  const row=(a,ic,t,s)=>`<button class="startc" style="margin:8px 0 0;background:var(--s2)" data-a="${a}" data-id="${w.id}"><i>${ic}</i><span><b>${t}</b><small>${s}</small></span>${I.right}</button>`;
+  return`<div class="box"><b>Make the next one easier</b>${saveIt?row('wdRoutine',I.plus,'Save this as a routine',"Start it again with one tap, with today's weights as targets"):''}${noGoal?row('goal',I.cal,'Set a weekly goal','Track your week and build a streak'):''}</div>`}
 /* ---------- routine share links (same payload as the Android app's RoutineLink.kt) ---------- */
 const SHARE_BASE='https://dhammishivam.github.io/lift-log/r/';
 const b64u=bytes=>{let b='';bytes.forEach(x=>b+=String.fromCharCode(x));return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
@@ -1726,6 +1751,11 @@ document.addEventListener('click',async e=>{
     if(v==='e')editRoutine(r);if(v==='c'){const c=clone(r);c.id='r_'+rid();c.name=r.name+' (copy)';c.created=Date.now();put(c.id,c);renderMain()}
     if(v==='x'&&await confirmD(`Delete “${r.name}”?`,'Past workouts started from it stay in your history.','Delete routine')){put(r.id,null);renderMain();toast('Routine deleted',()=>{put(r.id,r);renderMain()})}break}
   case'newRoutine':editRoutine(blankRoutine(),true);break;
+  case'wunit':sh.st.unit=d.u;paint(sh);break;
+  case'wgoal':sh.st.goal=sh.st.goal===+d.n?0:+d.n;paint(sh);break;
+  case'wgo':finishWelcome(sh,d.v);break;
+  case'tipok':{const se=settings();put('settings',{...se,kind:'settings',tips:[...(se.tips||[]),d.k]});if(sh)paint(sh);break}
+  case'wdRoutine':{const w=S.docs[d.id];if(w)editRoutine({kind:'routine',id:'r_'+rid(),name:w.title,exercises:w.exercises.map(it=>({...clone(it),note:'',sets:it.sets.map(q=>({t:q.t||'n',kg:q.kg,reps:q.reps,km:q.km,sec:q.sec}))}))},true);break}
   case'rtLink':{let t='';try{t=await navigator.clipboard.readText()}catch(e){}const r=parseRoutineLink(t);if(r)openSheet('shr',{r});else openSheet('rtlink',{t:''});break}
   case'rtlinkgo':{const r=parseRoutineLink(sh.st.t);if(!r){toast("That isn't a Lift Log routine link");break}closeSheet(sh);openSheet('shr',{r});break}
   case'shradd':addShared(sh,false);break;
@@ -1859,6 +1889,7 @@ document.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f)retur
   if(f==='pq'){sh.st.q=t.value;repaintPick(sh);return}
   if(f==='rname'){sh.st.r.name=t.value;return}
   if(f==='rtl'){sh.st.t=t.value;return}
+  if(f==='wname'){sh.st.name=t.value;return}
   if(f==='ftitle'){sh.st.title=t.value;return}
   if(f==='fnotes'){sh.st.notes=t.value;return}
   if(f==='fmin'){sh.st.min=num(t.value)||1;return}
@@ -1894,16 +1925,16 @@ function ingest(snap){if(snap.metadata.fromCache&&snap.empty)return;const m={};s
   Object.keys({...busy,...pend}).forEach(k=>{if(busy[k]||pend[k]){if(S.docs[k])m[k]=S.docs[k];else delete m[k]}});
   if(liveSheet()||saveT){if(A)m.active=A;else delete m.active}
   S.docs=m;A=m.active||null;index();saveCache();refresh()}
-(async()=>{const use=window.claude&&window.claude.use;if(!use){MODE='local';return}
+(async()=>{const use=window.claude&&window.claude.use;if(!use){MODE='local';maybeWelcome();return}
   let db=null,user=null;try{[db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')])}catch(e){}
   let id=null;try{id=user?await user.id():null}catch(e){}
-  if(!db||!id){MODE='local';refresh();return}
-  try{COL=db.collection('data/users/'+id)}catch(e){MODE='local';return}
+  if(!db||!id){MODE='local';refresh();maybeWelcome();return}
+  try{COL=db.collection('data/users/'+id)}catch(e){MODE='local';maybeWelcome();return}
   MODE='cloud';const before=clone(S.docs);let first=true;
   window.claude.use('assets').then(a=>{ASSETS=a||null;SH.forEach(x=>{if(x.kind==='meas')paint(x)})}).catch(()=>{});
   const tm=setTimeout(()=>toast("Can't reach your saved data yet. Showing this device's copy."),10000);
-  COL.onSnapshot(snap=>{ingest(snap);if(!snap.metadata.fromCache){clearTimeout(tm);if(first){first=false;let n=0;[...UNS].forEach(k=>{if(before[k]&&!S.docs[k]){S.docs[k]=before[k];push(k);n++}});UNS.clear();saveUns();if(n){index();saveCache();refresh()}}}},
-    err=>{clearTimeout(tm);COL=null;MODE='local';toast('Sync stopped. Changes stay on this device for now.')});
+  COL.onSnapshot(snap=>{ingest(snap);if(!snap.metadata.fromCache){clearTimeout(tm);if(first){first=false;let n=0;[...UNS].forEach(k=>{if(before[k]&&!S.docs[k]){S.docs[k]=before[k];push(k);n++}});UNS.clear();saveUns();if(n){index();saveCache();refresh()}maybeWelcome()}}},
+    err=>{clearTimeout(tm);COL=null;MODE='local';maybeWelcome();toast('Sync stopped. Changes stay on this device for now.')});
 })();
 }
 </script>

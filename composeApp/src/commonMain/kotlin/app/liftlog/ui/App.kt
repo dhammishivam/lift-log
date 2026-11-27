@@ -38,6 +38,7 @@ fun App(platform: Platform) {
         // Once data is loaded: take taps from the notification and widget, and keep both up to date.
         LaunchedEffect(store.loaded) {
             if (!store.loaded) return@LaunchedEffect
+            if (needsWelcome(st)) st.push(Screen.Welcome)
             platform.setActionHandler { st.handleAction(it) }
             launch { snapshotFlow { st.data.settings.crashReports != false }.distinctUntilChanged().collect { platform.setCrashReports(it) } }
             launch { snapshotFlow { st.liveInfo() }.distinctUntilChanged().collect { platform.liveWorkout(it) } }
@@ -108,6 +109,7 @@ private fun ScreenHost(st: AppState, s: Screen) {
         is Screen.Stats -> StatsScreen(st, s)
         is Screen.Programs -> ProgramsScreen(st, s)
         is Screen.SharedRoutineView -> SharedRoutineScreen(st, s)
+        is Screen.Welcome -> WelcomeScreen(st, s)
     }
 }
 

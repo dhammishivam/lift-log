@@ -69,6 +69,9 @@ interface Platform {
     fun updateWidget(info: WidgetInfo) {}
     /** A mascot picture for celebrations ("titan", "classic", "pump", "champ"), or null. */
     fun mascot(kind: String): ImageBitmap? = null
+    /** The launcher can add the home screen widget for the user. */
+    val canPinWidget: Boolean get() = false
+    fun pinWidget() {}
     /** Opens the share sheet with [text]. False where there is none. */
     fun shareText(text: String, title: String): Boolean = false
     /** Shares a workout image. Returns false where sharing images isn't available. */

@@ -32,7 +32,7 @@ fun WorkoutDetailScreen(st: AppState, s: Screen.WorkoutDetail) {
         if (w == null) { Body { Mu("This workout was deleted.") }; return@Column }
         val pm = idx.prm[w.id] ?: PrMarks(0, emptyMap()); val ss = ssInfo(w.exercises); val cmp = compareWeight(idx.wVol(w))
         Body {
-            if (s.fresh) DoneHero(st, w)
+            if (s.fresh) { DoneHero(st, w); FirstSteps(st, w) }
             Txt(w.title, size = 24.sp, weight = FontWeight.SemiBold)
             Mu("${dLong(w.start)} · ${tShort(w.start)}", size = 15.sp)
             StatsCard(listOf("Time" to dur(w.end - w.start), "Volume" to wvShort(idx.wVol(w), lb), "Sets" to idx.wSets(w).toString(), "Records" to pm.n.toString()),
@@ -373,6 +373,35 @@ private fun DoneHero(st: AppState, w: Workout) {
 }
 
 private fun isVolW(idx: app.liftlog.logic.Index, w: Workout) = idx.wVol(w) > 0
+
+/** After the very first workout: the few things that make the second one easier. */
+@Composable
+private fun FirstSteps(st: AppState, w: Workout) {
+    if (st.idx.ws.size != 1) return
+    val noGoal = (st.data.settings.goal ?: 0) == 0
+    val saveIt = w.routineId == null && st.data.routines.isEmpty()
+    val widget = st.platform.canPinWidget
+    if (!noGoal && !saveIt && !widget) return
+    Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).card(16.dp)) {
+        Txt("Make the next one easier", weight = FontWeight.SemiBold)
+        if (saveIt) StepRow(Ic.plus, "Save this as a routine", "Start it again with one tap, with today's weights as targets") {
+            st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = w.title, exercises = w.exercises.map { it.copy(note = "", sets = it.sets.map { q -> WSet(t = q.t, kg = q.kg, reps = q.reps, km = q.km, sec = q.sec) }) }), true))
+        }
+        if (noGoal) StepRow(Ic.cal, "Set a weekly goal", "Track your week and build a streak") { goalMenu(st) }
+        if (widget) StepRow(Ic.dumb, "Add the home screen widget", "Your week at a glance, and a one-tap start") { st.platform.pinWidget() }
+    }
+}
+
+@Composable
+private fun StepRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String, onClick: () -> Unit) {
+    val p = LocalPal.current
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(p.s2), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(20.dp), tint = p.ac) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) { Txt(title, size = 15.sp, weight = FontWeight.SemiBold); Mu(text, size = 13.sp) }
+        Icon(Ic.right, null, Modifier.size(18.dp), tint = p.mu)
+    }
+}
 
 @Composable
 private fun Change(label: String, v: String, up: Boolean) {

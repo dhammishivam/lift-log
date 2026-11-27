@@ -72,7 +72,9 @@ class UiFlowsTest {
     private var testName = "?"
     @org.junit.After fun stopWatchdog() { wd?.interrupt() }
 
-    private fun launch(seed: Seed = Seed()): FakePlatform {
+    /** [welcome]: show the first-open welcome like a new user gets; other tests start past it. */
+    private fun launch(seed: Seed = Seed(), welcome: Boolean = false): FakePlatform {
+        if (!welcome && seed.rows.none { it.second == "settings" }) seed.settings(Settings(onb = true))
         watchdog(testName)
         val p = FakePlatform(seed.rows)
         val t0 = System.currentTimeMillis()
@@ -130,6 +132,38 @@ class UiFlowsTest {
         assertTrue(!has("Build from my workouts"))
         assertTrue("widget gets data on start", p.widgets.isNotEmpty())
         assertNull(p.widgets.last().activeStart)
+    }
+
+    /* ---------- new user ---------- */
+
+    @Test fun welcomeAsksUnitsAndGoalThenStarts() {
+        launch(welcome = true)
+        see("Welcome to Lift Log")
+        tap("lb"); tap("3")
+        tap("Just start a workout")
+        see("Log workout")
+        tapDesc("Minimise")
+        see("3 more to hit your goal") // the goal card appears once there's a goal
+        assertTrue(!has("Welcome to Lift Log"))
+    }
+
+    @Test fun dayZeroHidesTheEmptyWeekCard() {
+        launch()
+        assertTrue(!has("0 workouts this week")); see("Start empty workout")
+    }
+
+    @Test fun firstWorkoutShowsTipsThenNextSteps() {
+        val a = Active(id = "a1", start = now - 600_000, title = "Push", exercises = listOf(bench(listOf(WSet(kg = 60.0, reps = 8.0)))))
+        launch(Seed().active(a).settings(Settings(onb = true)))
+        tap("Resume")
+        see("Tap ✓ when you finish a set", sub = true)
+        tap("Got it"); gone("Got it")
+        tapDesc("Complete set")
+        see("stay on the lock screen", sub = true) // the next tip, while resting
+        tap("Finish")
+        tap("Save workout", last = true)
+        see("Workout complete")
+        see("Make the next one easier"); see("Save this as a routine"); see("Set a weekly goal")
     }
 
     @Test fun buildYourOwnOpensTheRoutineEditor() {

@@ -37,7 +37,8 @@ fun WorkoutTab(st: AppState) {
         if (parseRoutineLink(t) == null) st.say("Copy a Lift Log routine link, then tap here") else st.openRoutineLink(t)
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp)) {
-        item {
+        // Day zero: no "0 workouts · 0-week streak" card until there's a workout or a goal.
+        if (idx.ws.isNotEmpty() || gl > 0) item {
             Row(Modifier.fillMaxWidth().card(), verticalAlignment = Alignment.CenterVertically) {
                 if (gl > 0) {
                     val frac = (wk.size.toFloat() / gl).coerceAtMost(1f)
@@ -55,10 +56,7 @@ fun WorkoutTab(st: AppState) {
                     Txt(when { gl == 0 -> "${wk.size} workout${if (wk.size == 1) "" else "s"} this week"; wk.size >= gl -> "Weekly goal done"; else -> "${gl - wk.size} more to hit your goal" }, size = 16.sp, weight = FontWeight.SemiBold)
                     Mu("${dur(wk.sumOf { it.end - it.start })} trained · $cur-week streak")
                 }
-                Btn(if (gl > 0) "Edit" else "Set goal", {
-                    st.showMenu("Weekly goal", (1..7).map { n -> MenuItem("$n workout${if (n > 1) "s" else ""} a week", on = n == gl) { st.setSettings { it.copy(goal = n) } } } +
-                        (if (gl > 0) listOf(MenuItem("No goal") { st.setSettings { it.copy(goal = 0) } }) else emptyList()))
-                }, small = true)
+                Btn(if (gl > 0) "Edit" else "Set goal", { goalMenu(st) }, small = true)
             }
         }
         item {
@@ -76,7 +74,6 @@ fun WorkoutTab(st: AppState) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Label("Routines", Modifier.weight(1f))
                 if (idx.rs.isNotEmpty()) {
-                    IconBtn(Ic.import, "Add routine from a link", { fromLink() }, tint = p.ac, size = 40.dp); Spacer(Modifier.width(4.dp))
                     Btn("Programs", { openPrograms(st) }, small = true, icon = Ic.cal); Spacer(Modifier.width(8.dp))
                     Btn("New routine", { st.push(Screen.RoutineEditor(Routine(id = "r_" + rid(), name = ""), true)) }, small = true, icon = Ic.plus)
                 }
@@ -101,6 +98,7 @@ fun WorkoutTab(st: AppState) {
             }
             if (!closed || !grouped) items(list, key = { it.id }) { r -> RoutineCard(st, r) }
         }
+        if (idx.rs.isNotEmpty()) item { Btn("Add a routine from a link", { fromLink() }, Modifier.fillMaxWidth(), kind = BtnKind.Ghost, icon = Ic.share) }
     }
 }
 
@@ -134,9 +132,15 @@ private fun routineMenu(st: AppState, r: Routine) {
     ), if (fs.isEmpty()) "Tip: give a routine a folder name in Edit to group them." else null)
 }
 
+fun goalMenu(st: AppState) {
+    val gl = st.idx.settings.goal ?: 0
+    st.showMenu("Weekly goal", (1..7).map { n -> MenuItem("$n workout${if (n > 1) "s" else ""} a week", on = n == gl) { st.setSettings { it.copy(goal = n) } } } +
+        (if (gl > 0) listOf(MenuItem("No goal") { st.setSettings { it.copy(goal = 0) } }) else emptyList()))
+}
+
 /** A big tappable choice on the empty Workout tab. */
 @Composable
-private fun StartCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String, primary: Boolean = false, onClick: () -> Unit) {
+internal fun StartCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String, primary: Boolean = false, onClick: () -> Unit) {
     val p = LocalPal.current
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(16.dp)).background(if (primary) p.acs else p.s1).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically) {

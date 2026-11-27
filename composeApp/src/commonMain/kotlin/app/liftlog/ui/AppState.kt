@@ -53,6 +53,8 @@ sealed class Screen {
         var days by mutableStateOf(p?.days); var pick by mutableStateOf<String?>(null)
     }
     class PinEditor(val eid: String, t: String) : Screen() { var t by mutableStateOf(t) }
+    /** First open: name, units, goal and how to start. */
+    object Welcome : Screen()
     /** A routine someone shared as a link, before it's added. */
     class SharedRoutineView(val r: SharedRoutine) : Screen()
 }
