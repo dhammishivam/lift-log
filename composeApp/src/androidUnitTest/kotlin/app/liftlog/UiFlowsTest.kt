@@ -185,10 +185,8 @@ class UiFlowsTest {
         tap("3 days a week")
         see("Best match"); see("Full Body 3-Day")
         tap("Full Body 3-Day")
-        see("Full Body A"); see("Add program")
-        tap("Add program")
-        see("Full Body 3-Day added")
-        tap("Start Full Body A now")
+        see("Full Body 3-Day added"); see("Full Body A") // straight to the Workout tab
+        tap("Start routine")
         see("Log workout"); see("Squat (Barbell)")
         pump(800)
         assertEquals("Full Body A", p.live.last()!!.title)
@@ -202,7 +200,6 @@ class UiFlowsTest {
         see("Dumbbell Upper / Lower 4-Day")
         assertTrue("no barbell programs for dumbbells only", !has("Upper / Lower 4-Day"))
         tap("Dumbbell Upper / Lower 4-Day")
-        tap("Add program"); tap("Later")
         see("DB Upper A"); see("4 more to hit your goal")
         tap("Programs") // the button next to New routine once you have routines
         see("About you")

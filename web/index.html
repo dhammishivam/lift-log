@@ -1425,7 +1425,7 @@ function programRoutines(g,p){const now=Date.now();return g.plan.map((d,i)=>({ki
 const progProfile=st=>{const h=num(st.height);return{gender:st.gender||null,heightCm:h==null?null:UNIT()==='lb'?Math.round(h*2.54*10)/10:h,exp:st.exp,equip:st.equip,goal:st.goal||null,days:st.days||null}};
 function openPrograms(){const p=settings().profile||{},lw=MS.find(m=>m.v.weight_kg!=null);
   openSheet('prog',{step:0,gender:p.gender||null,height:p.heightCm!=null?String(UNIT()==='lb'?Math.round(p.heightCm/2.54*10)/10:p.heightCm):'',weight:lw?String(Math.round(toU(lw.v.weight_kg)*10)/10):'',exp:p.exp||null,equip:p.equip||null,goal:p.goal||null,days:p.days||null,pick:null})}
-R.prog=st=>{const T=['About you','Days a week','Pick a program','Program'][st.step],lb=UNIT()==='lb';
+R.prog=st=>{const T=['About you','Days a week','Pick a program'][Math.min(st.step,2)],lb=UNIT()==='lb';
   const ch=(lab,k,opts,opt)=>`<p class="mu pgl">${lab}</p><div class="pgc">${opts.map(([v,l])=>`<button class="chip ${st[k]===v?'on':''}" data-a="pgset" data-k="${k}" data-v="${v}"${opt?' data-opt="1"':''}>${l}</button>`).join('')}</div>`;
   let body='';
   if(st.step===0)body=`<p style="margin:0;font-size:16px">A few quick questions so we can suggest programs that fit you.</p><p class="mu" style="margin:4px 0 0;font-size:14px">Only what you know. Everything stays with your Lift Log data.</p>
@@ -1436,11 +1436,6 @@ R.prog=st=>{const T=['About you','Days a week','Pick a program','Program'][st.st
     body=`<p style="margin:0;font-size:18px;font-weight:600">How many days a week can you train?</p><p class="mu" style="margin:4px 0 12px;font-size:14px">Pick what you can keep up. You can change program later.</p>${[2,3,4,5,6].map(n=>`<button class="pgd ${st.days===n?'on':''}" data-a="pgdays" data-n="${n}"><span class="n">${n}</span><span><b>${n} days a week</b><small>${H[n]}</small></span>${I.right}</button>`).join('')}`}
   else if(st.step===2){const list=recommend(progProfile(st),st.days||3);
     body=`<p class="mu" style="margin:0 0 8px;font-size:15px">Suggested for ${st.days} days a week, ${equipLabel(st.equip||'gym').toLowerCase()}.</p>${list.map(({g,note},i)=>`<button class="pgp ${i?'':'best'}" data-a="pgpick" data-id="${g.id}">${i?'':'<span class="bm">Best match</span>'}<b>${esc(g.name)}</b><span class="m">${g.days} days · ${levelLabel(g.level)} · ${equipLabel(g.equip)}</span>${note?`<span class="nt">${note}</span>`:''}<p>${esc(g.about)}</p><span class="dd">${g.plan.map(d=>esc(d.name)).join(' · ')}</span></button>`).join('')}`}
-  else{const g=PROGRAMS.find(x=>x.id===st.pick),pr=progProfile(st);
-    body=`<h2 style="margin:0">${esc(g.name)}</h2><p class="mu" style="margin:2px 0 0;font-size:14px">${g.days} days a week · ${levelLabel(g.level)} · ${equipLabel(g.equip)}</p><p style="margin:8px 0 0">${esc(g.about)}</p>
-    ${g.plan.length<g.days?`<p class="mu" style="font-size:14px;margin:6px 0 0">Rotate through ${g.plan.length===2?'both workouts':`the ${g.plan.length} workouts`} in order, ${g.days} times a week.</p>`:''}
-    ${g.plan.map(d=>`<div class="pgday"><h4>${esc(d.name)}</h4>${d.ex.map(e=>{const t=ex('b:'+slug(e.name)).type,n=pr.exp==='new'?Math.min(e.sets,3):e.sets;return`<div><span>${esc(e.name)}</span><span>${n} × ${t==='dur'?fmtSec(e.reps):e.reps}</span></div>`}).join('')}</div>`).join('')}
-    <button class="btn pri wide" style="margin-top:16px" data-a="pgadd">${I.plus} Add program</button>`}
   return`<div class="hd"><button class="ib" data-a="pgback" aria-label="${st.step?'Back':'Close'}">${st.step?I.left:I.x}</button><h2>${T}</h2><span class="mu" style="font-size:14px;padding-right:8px">${Math.min(st.step+1,3)} of 3</span></div><div class="bd">${body}</div>`};
 async function addProgram(sh){const st=sh.st,g=PROGRAMS.find(x=>x.id===st.pick),p=progProfile(st);if(!g)return;
   if(RS.some(r=>r.folder===g.name)&&!await confirmD(`You already have ${g.name}`,'Add another copy of its routines?','Add again'))return;
@@ -1449,8 +1444,7 @@ async function addProgram(sh){const st=sh.st,g=PROGRAMS.find(x=>x.id===st.pick),
     if(!last||last.date<today||last.v.weight_kg!==kg){const m=MS.find(x=>x.date>=today),e=m?{...clone(m),v:{...m.v,weight_kg:kg}}:{kind:'measure',id:'m_'+rid(),date:today+12*3600000,v:{weight_kg:kg}};put(e.id,e)}}
   const rs=programRoutines(g,p);rs.forEach(r=>put(r.id,r));Object.keys(UI.fold).forEach(k=>{if(k!==g.name)UI.fold[k]=true});UI.fold[g.name]=false;
   closeSheet(sh);UI.tab='workout';location.hash='workout';renderMain(true);
-  const v=await menu(`${g.name} added`,[{l:`Start ${rs[0].name} now`,v:'s'},{l:'Later',v:'l'}],`${cnt(rs.length,'routine')} are in your Workout tab, in a folder called “${g.name}”. Your weekly goal is set to ${g.days} unless you already had one.`);
-  if(v==='s')startWorkout(()=>fromTemplate(rs[0].name,rs[0].id,rs[0].exercises))}
+  toast(`${g.name} added`,()=>{rs.forEach(r=>put(r.id,null));renderMain()})}
 
 /* ---------- pinned notes ---------- */
 // Reorder: exercises as short rows; drag the ☰ handle (or long-press a row) and drop where it should go.
@@ -1765,7 +1759,7 @@ document.addEventListener('click',async e=>{
   case'pgset':{const k=d.k;sh.st[k]=d.opt&&sh.st[k]===d.v?null:d.v;paint(sh);break}
   case'pgnext':{const st=sh.st;if(!st.exp)return toast("Pick how long you've been lifting");if(!st.equip)return toast('Pick where you train');const w=num(st.weight);if(w!=null){const bad=mProblem('weight_kg',fromU(w));if(bad)return toast(bad)}st.step=1;paint(sh);break}
   case'pgdays':sh.st.days=+d.n;sh.st.step=2;paint(sh);break;
-  case'pgpick':sh.st.pick=d.id;sh.st.step=3;paint(sh);break;
+  case'pgpick':sh.st.pick=d.id;addProgram(sh);break;
   case'pgback':if(!sh.st.step)closeSheet(sh);else{sh.st.step--;paint(sh)}break;
   case'pgadd':addProgram(sh);break;
   case'hm':UI.hm=d.m;renderMain();break;

@@ -33,15 +33,14 @@ private fun Screen.Programs.profile(lb: Boolean) = Profile(
 @Composable
 fun ProgramsScreen(st: AppState, s: Screen.Programs) {
     val lb = LocalLb.current
-    val titles = listOf("About you", "Days a week", "Pick a program", "Program")
+    val titles = listOf("About you", "Days a week", "Pick a program")
     Column(Modifier.fillMaxSize()) {
-        TopBar(titles[s.step], left = { IconBtn(if (s.step == 0) Ic.x else Ic.left, if (s.step == 0) "Close" else "Back", { if (s.step == 0) st.close(s) else s.step-- }) },
+        TopBar(titles[s.step.coerceAtMost(2)], left = { IconBtn(if (s.step == 0) Ic.x else Ic.left, if (s.step == 0) "Close" else "Back", { if (s.step == 0) st.close(s) else s.step-- }) },
             right = { Mu("${minOf(s.step + 1, 3)} of 3", Modifier.padding(end = 12.dp), size = 14.sp) })
         when (s.step) {
             0 -> AboutYou(st, s, lb)
             1 -> DaysStep(s)
-            2 -> PickStep(st, s, lb)
-            else -> PreviewStep(st, s, lb)
+            else -> PickStep(st, s, lb)
         }
     }
 }
@@ -108,7 +107,7 @@ private fun PickStep(st: AppState, s: Screen.Programs, lb: Boolean) {
             val g = sg.program
             Column(Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(RoundedCornerShape(16.dp)).background(p.s1)
                 .then(if (i == 0) Modifier.border(2.dp, p.ac, RoundedCornerShape(16.dp)) else Modifier)
-                .clickable { s.pick = g.id; s.step = 3 }.padding(16.dp)) {
+                .clickable { addProgram(st, s, g, s.profile(lb), lb) }.padding(16.dp)) {
                 if (i == 0) Txt("Best match", Modifier.padding(bottom = 4.dp), size = 13.sp, weight = FontWeight.Bold, color = p.ac)
                 Txt(g.name, size = 18.sp, weight = FontWeight.SemiBold)
                 Mu("${g.days} days · ${levelLabel(g.level)} · ${equipLabel(g.equip)}", Modifier.padding(top = 2.dp), size = 14.sp)
@@ -116,37 +115,6 @@ private fun PickStep(st: AppState, s: Screen.Programs, lb: Boolean) {
                 Txt(g.about, Modifier.padding(top = 8.dp), size = 15.sp)
                 Mu(g.plan.joinToString(" · ") { it.name }, Modifier.padding(top = 6.dp), size = 13.sp)
             }
-        }
-    }
-}
-
-@Composable
-private fun PreviewStep(st: AppState, s: Screen.Programs, lb: Boolean) {
-    val p = LocalPal.current
-    val g = PROGRAMS.firstOrNull { it.id == s.pick } ?: run { s.step = 2; return }
-    val prof = s.profile(lb)
-    Column(Modifier.fillMaxSize()) {
-        Body(Modifier.weight(1f)) {
-            Txt(g.name, size = 22.sp, weight = FontWeight.SemiBold)
-            Mu("${g.days} days a week · ${levelLabel(g.level)} · ${equipLabel(g.equip)}", size = 14.sp)
-            Txt(g.about, Modifier.padding(top = 8.dp), size = 15.sp)
-            if (g.plan.size < g.days) Mu("Rotate through ${if (g.plan.size == 2) "both workouts" else "the ${g.plan.size} workouts"} in order, ${g.days} times a week. The widget always shows the next one.", Modifier.padding(top = 6.dp), size = 14.sp)
-            g.plan.forEach { d ->
-                Column(Modifier.fillMaxWidth().padding(top = 12.dp).card(14.dp)) {
-                    Txt(d.name, size = 17.sp, weight = FontWeight.SemiBold, color = p.ac)
-                    d.exercises.forEach { e ->
-                        val t = st.idx.exOf("b:" + slug(e.name)).type
-                        val sets = if (prof.exp == "new") minOf(e.sets, 3) else e.sets
-                        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                            Txt(e.name, Modifier.weight(1f), size = 15.sp, maxLines = 1)
-                            Mu("$sets × ${if (t == "dur") fmtSec(e.reps.toDouble()) else e.reps.toString()}", Modifier.padding(start = 8.dp), size = 15.sp)
-                        }
-                    }
-                }
-            }
-        }
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Btn("Add program", { addProgram(st, s, g, prof, lb) }, Modifier.fillMaxWidth(), kind = BtnKind.Primary, icon = Ic.plus)
         }
     }
 }
@@ -167,10 +135,8 @@ private fun addProgram(st: AppState, s: Screen.Programs, g: Program, prof: Profi
         st.fold.keys.toList().forEach { k -> if (k != g.name) st.fold[k] = true }
         st.fold[g.name] = false
         st.close(s); st.tab = Tab.Workout
-        st.showMenu("${g.name} added", listOf(
-            MenuItem("Start ${rs.first().name} now") { st.startWorkout { st.fromTemplate(rs.first().name, rs.first().id, rs.first().exercises) } },
-            MenuItem("Later") {},
-        ), "${count(rs.size, "routine")} are in your Workout tab, in a folder called “${g.name}”. Your weekly goal is set to ${g.days} unless you already had one.")
+        // Straight to the Workout tab: the routines are there to start. Undo takes them away again.
+        st.say("${g.name} added") { rs.forEach { st.store.deleteRoutine(it.id) } }
     }
     if (st.idx.rs.any { it.folder == g.name }) st.confirm("You already have ${g.name}", "Add another copy of its routines?", "Add again") { go() } else go()
 }
