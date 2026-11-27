@@ -122,10 +122,12 @@ class AppStateTest {
         var i = st.liveInfo()!!
         assertEquals("Push", i.title); assertEquals(0, i.done); assertEquals(3, i.total); assertNull(i.restEnd)
         assertEquals("Bench Press (Barbell) · warm-up · 20 kg × 10", i.next)
+        assertEquals("Bench Press (Barbell)", i.exName); assertEquals("Warm-up · 20 kg × 10", i.setLine)
         // Skip the warm-up: "next" follows the set you just did, not the skipped one.
         checkSet(st, 0, 1)
         i = st.liveInfo()!!
         assertEquals("Bench Press (Barbell) · set 2 · 60 kg × 8", i.next); assertEquals(1, i.done); assertNotNull(i.restEnd)
+        assertEquals("Set 2 of 2 · 60 kg × 8", i.setLine); assertNotNull(i.restTotal)
         checkSet(st, 0, 2)
         assertEquals("Bench Press (Barbell) · warm-up · 20 kg × 10", st.liveInfo()!!.next)
         checkSet(st, 0, 0)

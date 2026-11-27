@@ -752,9 +752,10 @@ function vWorkout(){const ws=weekStart(Date.now()),wk=WS.filter(w=>w.start>=ws);
   return`<div class="goal">${gl?`<svg viewBox="0 0 64 64" class="ringsv" role="img" aria-label="${wk.length} of ${gl} workouts this week"><circle cx="32" cy="32" r="26" style="stroke:var(--s2)" stroke-width="7" fill="none"/><circle cx="32" cy="32" r="26" style="stroke:var(--ac)" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="${(C*pr).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/><text x="32" y="38" text-anchor="middle" style="fill:var(--ink);stroke:none;font:700 19px var(--num)">${wk.length}/${gl}</text></svg>`:''}<div><b>${gl?(wk.length>=gl?'Weekly goal done':`${gl-wk.length} more to hit your goal`):`${wk.length} workout${wk.length===1?'':'s'} this week`}</b><span>${tt} trained · ${cur}-week streak</span></div><button class="btn sm" data-a="goal">${gl?'Edit':'Set goal'}</button></div>
   <p class="lbl">Quick start</p><button class="big" data-a="startEmpty">${I.plus}<span>Start empty workout</span></button>
   <div class="btns" style="margin-top:10px"><button class="btn sm" data-a="tool" data-t="plate">Plate calculator</button><button class="btn sm" data-a="tool" data-t="orm">1RM calculator</button><button class="btn sm" data-a="coach">${I.chat} Ask the coach</button></div>
-  <div class="sec"><p class="lbl">Routines</p>${RS.length?`<div class="btns"><button class="btn sm" data-a="programs">${I.cal} Programs</button><button class="btn sm" data-a="newRoutine">${I.plus} New routine</button></div>`:''}</div>
+  <div class="sec"><p class="lbl">Routines</p>${RS.length?`<div class="btns"><button class="ib" data-a="rtLink" aria-label="Add routine from a link" style="color:var(--ac)">${I.imp}</button><button class="btn sm" data-a="programs">${I.cal} Programs</button><button class="btn sm" data-a="newRoutine">${I.plus} New routine</button></div>`:''}</div>
   ${rs||`<button class="startc pri" data-a="programs"><i>${I.trophy}</i><span><b>Use a program</b><small>Answer a few questions and pick a proven plan for your week: full body, upper / lower, push / pull / legs and more.</small></span>${I.right}</button>
   <button class="startc" data-a="newRoutine"><i>${I.plus}</i><span><b>Build your own</b><small>Pick exercises, sets and rest times and save it as a routine.</small></span>${I.right}</button>
+  <button class="startc" data-a="rtLink"><i>${I.share}</i><span><b>Got a routine link?</b><small>Paste the link a friend sent you to add their routine.</small></span>${I.right}</button>
   ${WS.length?'':`<button class="startc" data-a="hevyGuide"><i>${I.imp}</i><span><b>Coming from Hevy?</b><small>Bring your workouts, measurements and routines across in a couple of minutes.</small></span>${I.right}</button>`}
   ${WS.length?`<button class="startc" data-a="buildRt"><i>${I.cal}</i><span><b>Build from my workouts</b><small>Turn workouts you've repeated into routines.</small></span>${I.right}</button>`:''}`}`}
 // Profile: name, all-time totals and a dashboard of shortcuts, then the weekly chart and workouts.
@@ -1454,6 +1455,43 @@ async function addProgram(sh){const st=sh.st,g=PROGRAMS.find(x=>x.id===st.pick),
 /* ---------- pinned notes ---------- */
 // Reorder: exercises as short rows; drag the ☰ handle (or long-press a row) and drop where it should go.
 function openReorder(sh){const items=clone(modelOf(sh).exercises);openSheet('reorder',{target:sh,items,order:items.map((_,i)=>i)})}
+/* ---------- routine share links (same payload as the Android app's RoutineLink.kt) ---------- */
+const SHARE_BASE='https://dhammishivam.github.io/lift-log/r/';
+const b64u=bytes=>{let b='';bytes.forEach(x=>b+=String.fromCharCode(x));return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const unb64u=p=>{let b=p.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const bin=atob(b),out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out};
+function routineLink(r){const isC=id=>(S.docs[id]||{}).kind==='exercise';
+  const e=r.exercises.map(it=>{const o={eid:it.eid};if(it.note&&it.note.trim())o.note=it.note;if(it.rest!=null)o.rest=it.rest;if(it.ss!=null)o.ss=it.ss;
+    o.sets=it.sets.map(q=>{const z={};if(q.t&&q.t!=='n')z.t=q.t;['kg','reps','km','sec'].forEach(k=>{if(q[k]!=null)z[k]=q[k]});return z});return o});
+  const c=[...new Set(r.exercises.map(it=>it.eid).filter(isC))].map(id=>{const x=ex(id);return{id,name:x.name,muscle:x.muscle||'Other',equip:x.equip||'Other',type:x.type||'wr'}});
+  const o={n:r.name};if(UNIT()==='lb')o.u='lb';o.e=e;o.x=r.exercises.map(it=>ex(it.eid).name);if(c.length)o.c=c;
+  return SHARE_BASE+'#'+b64u(new TextEncoder().encode(JSON.stringify(o)))}
+function parseRoutineLink(t){try{t=(t||'').trim();const m=t.match(/(?:\/r\/?#|[?&]d=)([A-Za-z0-9_-]{8,})/);const p=m?m[1]:(/^[A-Za-z0-9_-]{8,}$/.test(t)?t:null);if(!p)return null;
+  const r=JSON.parse(new TextDecoder().decode(unb64u(p)));return r&&typeof r.n==='string'&&r.n.trim()&&Array.isArray(r.e)&&r.e.length?r:null}catch(e){return null}}
+async function shareRoutine(r){const link=routineLink(r),text=`Here's my “${r.name}” routine on Lift Log: ${link}`;
+  try{if(navigator.share){await navigator.share({title:r.name,text});return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(text);toast('Link copied. Paste it to a friend.');return}catch(e){}
+  openSheet('rtlshow',{link:text})}
+function addShared(sh,start){const s=sh.st.r,byName={};Object.values(EX).forEach(x=>{byName[x.name.toLowerCase()]=x.id});const map={};
+  const idFor=(name,muscle,equip,type)=>{const k=name.toLowerCase();if(byName[k])return byName[k];const id='x_'+rid();put(id,{kind:'exercise',id,name,muscle,equip,type});byName[k]=id;return id};
+  (s.c||[]).forEach(c=>{map[c.id]=idFor(c.name,c.muscle||'Other',c.equip||'Other',c.type||'wr')});
+  const exs=s.e.map((it,i)=>({...it,eid:map[it.eid]||(EX[it.eid]?it.eid:idFor((s.x||[])[i]||'Shared exercise','Other','Other','wr')),sets:(it.sets||[]).map(q=>({t:q.t||'n',...['kg','reps','km','sec'].reduce((o,k)=>(q[k]!=null&&(o[k]=q[k]),o),{})}))}));
+  let name=s.n.trim().slice(0,60);if(RS.some(r=>r.name.toLowerCase()===name.toLowerCase()))name+=' (shared)';
+  const r={kind:'routine',id:'r_'+rid(),name,created:Date.now(),exercises:exs};put(r.id,r);closeSheet(sh);UI.tab='workout';location.hash='workout';renderMain(true);
+  if(start)startWorkout(()=>fromTemplate(r.name,r.id,r.exercises));else toast(`“${r.name}” added to your routines`)}
+R.rtlink=st=>`<div class="hd"><button class="ib" data-a="close" aria-label="Close">${I.x}</button><h2>Add from a link</h2><span style="width:44px"></span></div>
+  <div class="bd"><p class="mu" style="margin:0">Paste the routine link a friend sent you.</p><label class="fld"><span>Link</span><textarea data-f="rtl" rows="4" placeholder="https://dhammishivam.github.io/lift-log/r/#…">${esc(st.t)}</textarea></label><button class="btn pri wide" data-a="rtlinkgo">Show routine</button></div>`;
+R.rtlshow=st=>`<div class="hd"><button class="ib" data-a="close" aria-label="Close">${I.x}</button><h2>Share routine</h2><span style="width:44px"></span></div>
+  <div class="bd"><p class="mu" style="margin:0">Copy this and send it to a friend.</p><label class="fld"><span>Link</span><textarea rows="5" readonly>${esc(st.link)}</textarea></label><button class="btn pri wide" data-a="rtlcopy">Copy</button></div>`;
+R.shr=st=>{const r=st.r,cu={};(r.c||[]).forEach(c=>cu[c.id]=c);const tot=r.e.reduce((a,it)=>a+(it.sets||[]).length,0);
+  const rows=r.e.map((it,i)=>{const known=!cu[it.eid]&&EX[it.eid]?EX[it.eid]:null,name=known?known.name:(cu[it.eid]||{}).name||(r.x||[])[i]||'Exercise',type=known?known.type:(cu[it.eid]||{}).type||'wr';
+    const sets=it.sets||[],work=sets.filter(q=>q.t!=='w'),warm=sets.length-work.length,first=work.find(q=>q.kg!=null||q.reps!=null||q.sec!=null||q.km!=null);
+    const line=[`${work.length} set${work.length===1?'':'s'}`,first?fmtSet(type,first):null,warm?`${warm} warm-up${warm>1?'s':''}`:null,it.rest?`rest ${fmtSec(it.rest)}`:null].filter(Boolean).join(' · ');
+    return`<div class="box" style="display:flex;gap:12px;align-items:center;margin:0 0 8px;padding:12px">${known?`<span style="width:40px;height:40px;flex:none">${thumb(known)}</span>`:''}<div style="min-width:0"><b>${esc(name)}</b><p class="mu" style="margin:2px 0 0">${esc(line)}</p>${it.note?`<p class="mu" style="margin:2px 0 0;font-size:13px">“${esc(it.note)}”</p>`:''}</div></div>`}).join('');
+  const newEx=(r.c||[]).some(c=>!Object.values(EX).some(x=>x.name.toLowerCase()===c.name.toLowerCase()));
+  return`<div class="hd"><button class="ib" data-a="close" aria-label="Close">${I.x}</button><h2>Shared routine</h2><span style="width:44px"></span></div>
+  <div class="bd"><h2 style="margin:0;font-size:26px">${esc(r.n)}</h2><p class="mu" style="margin:4px 0 12px">${r.e.length} exercise${r.e.length===1?'':'s'} · ${tot} set${tot===1?'':'s'}</p>${rows}
+  ${newEx?'<p class="mu" style="font-size:13px">Exercises you don\'t have yet are added to your list.</p>':''}
+  <button class="btn pri wide" style="margin-top:12px" data-a="shradd">Add to my routines</button><button class="btn wide" style="margin-top:8px" data-a="shrstart">${I.play} Add and start now</button></div>`};
 R.reorder=st=>`<div class="hd"><button class="ib" data-a="close" aria-label="Cancel">${I.x}</button><h2>Reorder exercises</h2><button class="btn pri sm" data-a="rodone">Done</button></div>
   <div class="bd"><p class="mu" style="margin:0 0 8px">Drag ☰ to move an exercise, or long-press a row.</p><div class="rol">${st.order.map((i,k)=>{const x=ex(st.items[i].eid);return`<div class="ror" data-k="${k}"><span class="xa">${thumb(x)}</span><b>${esc(x.name)}</b><span class="rog" data-grip aria-label="Drag to reorder ${esc(x.name)}">${I.grip}</span></div>`}).join('')}</div></div>`;
 (()=>{let D=null,LP=null;
@@ -1682,11 +1720,17 @@ document.addEventListener('click',async e=>{
   case'resume':openLive();break;
   case'startEmpty':startWorkout(()=>({kind:'active',id:'w_'+rid(),start:Date.now(),title:'',routineId:null,exercises:[]}));break;
   case'rtStart':{const r=S.docs[d.id];if(r)startWorkout(()=>fromTemplate(r.name,r.id,r.exercises));break}
-  case'rtMenu':{const r=S.docs[d.id];if(!r)break;const fs=[...new Set(RS.map(x=>x.folder).filter(Boolean))];const v=await menu(r.name,[{l:'Edit routine',v:'e'},{l:'Duplicate',v:'c'},...(fs.length?[{l:'Move to folder',v:'f'}]:[]),{l:'Delete routine',v:'x',d:1}],fs.length?'':'Tip: give a routine a folder name in Edit to group them.');
+  case'rtMenu':{const r=S.docs[d.id];if(!r)break;const fs=[...new Set(RS.map(x=>x.folder).filter(Boolean))];const v=await menu(r.name,[{l:'Edit routine',v:'e'},{l:'Share as a link',v:'s'},{l:'Duplicate',v:'c'},...(fs.length?[{l:'Move to folder',v:'f'}]:[]),{l:'Delete routine',v:'x',d:1}],fs.length?'':'Tip: give a routine a folder name in Edit to group them.');
     if(v==='f'){const f=await menu('Move to folder',[...fs.map(x=>({l:x,v:x,on:r.folder===x})),{l:'No folder',v:'-'}]);if(f){put(r.id,{...r,folder:f==='-'?null:f});renderMain()}break}
+    if(v==='s'){shareRoutine(r);break}
     if(v==='e')editRoutine(r);if(v==='c'){const c=clone(r);c.id='r_'+rid();c.name=r.name+' (copy)';c.created=Date.now();put(c.id,c);renderMain()}
     if(v==='x'&&await confirmD(`Delete “${r.name}”?`,'Past workouts started from it stay in your history.','Delete routine')){put(r.id,null);renderMain();toast('Routine deleted',()=>{put(r.id,r);renderMain()})}break}
   case'newRoutine':editRoutine(blankRoutine(),true);break;
+  case'rtLink':{let t='';try{t=await navigator.clipboard.readText()}catch(e){}const r=parseRoutineLink(t);if(r)openSheet('shr',{r});else openSheet('rtlink',{t:''});break}
+  case'rtlinkgo':{const r=parseRoutineLink(sh.st.t);if(!r){toast("That isn't a Lift Log routine link");break}closeSheet(sh);openSheet('shr',{r});break}
+  case'shradd':addShared(sh,false);break;
+  case'shrstart':addShared(sh,true);break;
+  case'rtlcopy':{const t=sh.el.querySelector('textarea');t.select();try{await navigator.clipboard.writeText(sh.st.link);toast('Link copied')}catch(e){document.execCommand&&document.execCommand('copy')}break}
   case'programs':openPrograms();break;
   case'pgset':{const k=d.k;sh.st[k]=d.opt&&sh.st[k]===d.v?null:d.v;paint(sh);break}
   case'pgnext':{const st=sh.st;if(!st.exp)return toast("Pick how long you've been lifting");if(!st.equip)return toast('Pick where you train');const w=num(st.weight);if(w!=null){const bad=mProblem('weight_kg',fromU(w));if(bad)return toast(bad)}st.step=1;paint(sh);break}
@@ -1814,6 +1858,7 @@ document.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f)retur
   if(!sh)return;
   if(f==='pq'){sh.st.q=t.value;repaintPick(sh);return}
   if(f==='rname'){sh.st.r.name=t.value;return}
+  if(f==='rtl'){sh.st.t=t.value;return}
   if(f==='ftitle'){sh.st.title=t.value;return}
   if(f==='fnotes'){sh.st.notes=t.value;return}
   if(f==='fmin'){sh.st.min=num(t.value)||1;return}

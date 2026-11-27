@@ -52,58 +52,175 @@ object LiveBridge {
 
 /* ---------- "workout in progress" notification ---------- */
 
+/**
+ * The ongoing workout notification. While a workout runs it belongs to [WorkoutService], a foreground
+ * service, so battery savers can't kill Lift Log mid-workout and the buttons keep working from the lock screen.
+ */
 object LiveNotifier {
     private const val CHANNEL = "live"
     const val ID = 8
 
+    /** The notification [WorkoutService] puts in the foreground. */
+    var current: Notification? = null; private set
+    private var info: LiveInfo? = null
+    private var appCtx: Context? = null
+    private var serviceOn = false
+    private var lastLine: String? = null
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Redraws once a second while resting, so the countdown bar moves. */
+    private val tick = Runnable { appCtx?.let { post(it) } }
+
     private fun flags() = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
     fun show(ctx: Context, i: LiveInfo?) {
+        appCtx = ctx.applicationContext; info = i
+        handler.removeCallbacks(tick)
+        if (i == null) { stop(ctx); return }
+        post(ctx)
+    }
+
+    /** "Set 2 of 4 · 60 kg × 8" with its exercise, for the rest-over alert. */
+    fun nextLine(ctx: Context): String? = lastLine ?: prefs(ctx).getString("next", null)
+    private fun prefs(ctx: Context) = ctx.getSharedPreferences("live", Context.MODE_PRIVATE)
+
+    private fun post(ctx: Context) {
+        val i = info ?: return
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
-        if (i == null) { nm.cancel(ID); return }
+        val line = i.exName?.let { "$it · ${i.setLine}" }
+        if (line != lastLine) { lastLine = line; prefs(ctx).edit().putString("next", line).apply() }
+        val n = build(ctx, nm, i); current = n
+        if (!serviceOn) serviceOn = runCatching { ctx.startForegroundService(Intent(ctx, WorkoutService::class.java)); true }.getOrDefault(false)
+        runCatching { nm.notify(ID, n) }
+        if (i.restEnd != null && i.restEnd > System.currentTimeMillis()) handler.postDelayed(tick, 1000)
+    }
+
+    private fun stop(ctx: Context) {
+        current = null; lastLine = null; prefs(ctx).edit().remove("next").apply()
+        if (serviceOn) { runCatching { ctx.stopService(Intent(ctx, WorkoutService::class.java)) }; serviceOn = false }
+        ctx.getSystemService(NotificationManager::class.java)?.cancel(ID)
+    }
+
+    /**
+     * The app's screen was closed (swiped away) while a workout runs: the buttons have nothing to act on
+     * any more, so leave a plain "tap to continue" notification. The workout itself is saved.
+     */
+    fun orphan(ctx: Context) {
+        val i = info ?: run { ctx.getSystemService(NotificationManager::class.java)?.cancel(ID); return }
+        handler.removeCallbacks(tick); stop(ctx); info = null
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        val n = Notification.Builder(ctx, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_timer)
+            .setContentTitle(i.title)
+            .setContentText("Workout in progress. Tap to continue.")
+            .setContentIntent(openApp(ctx))
+            .setOngoing(true).setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setShowWhen(true).setWhen(i.start).setUsesChronometer(true)
+            .build()
+        runCatching { nm.notify(ID, n) }
+    }
+
+    private fun openApp(ctx: Context) = PendingIntent.getActivity(ctx, 20, Intent(ctx, MainActivity::class.java).putExtra(LiveBridge.EXTRA, "open")
+        .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), flags())
+
+    fun action(ctx: Context, label: String, action: String, rc: Int): Notification.Action = Notification.Action.Builder(
+        Icon.createWithResource(ctx, R.drawable.ic_stat_timer), label,
+        PendingIntent.getBroadcast(ctx, rc, Intent(ctx, LiveActionReceiver::class.java).putExtra(LiveBridge.EXTRA, action), flags()),
+    ).build()
+
+    private fun build(ctx: Context, nm: NotificationManager, i: LiveInfo): Notification {
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(NotificationChannel(CHANNEL, "Workout in progress", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Workout time, rest timer and the next set while you train"; setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
         }
-        val open = PendingIntent.getActivity(ctx, 20, Intent(ctx, MainActivity::class.java).putExtra(LiveBridge.EXTRA, "open")
-            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), flags())
-        fun act(label: String, action: String, rc: Int) = Notification.Action.Builder(
-            Icon.createWithResource(ctx, R.drawable.ic_stat_timer), label,
-            PendingIntent.getBroadcast(ctx, rc, Intent(ctx, LiveActionReceiver::class.java).putExtra(LiveBridge.EXTRA, action), flags()),
-        ).build()
-        val resting = i.restEnd != null && i.restEnd > System.currentTimeMillis()
-        val text = i.next?.let { "Next: $it" } ?: if (i.total > 0) "All ${i.total} sets done. Finish when you're ready." else "Add an exercise to get going."
+        val now = System.currentTimeMillis()
+        val resting = i.restEnd != null && i.restEnd > now
+        val sets = if (i.total > 0) "${i.done} of ${count(i.total, "set")}" else null
         val b = Notification.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_timer)
-            .setContentTitle(if (resting) "Resting · ${i.title}" else i.title)
-            .setContentText(text)
-            .setStyle(Notification.BigTextStyle().bigText(text))
-            .setSubText(if (i.total > 0) "${i.done} of ${count(i.total, "set")}" else null)
             .setOngoing(true).setOnlyAlertOnce(true).setAutoCancel(false)
-            .setContentIntent(open)
+            .setContentIntent(openApp(ctx))
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setShowWhen(true).setUsesChronometer(true)
-        if (resting) {
-            b.setWhen(i.restEnd!!).setChronometerCountDown(true)
-            b.addAction(act("−15s", "minus", 21)); b.addAction(act("+15s", "plus", 22)); b.addAction(act("Skip rest", "skip", 23))
-        } else {
-            b.setWhen(i.start)
-            if (i.next != null) b.addAction(act("Complete set", "done", 24))
+            .setSubText(listOfNotNull(i.title, sets).joinToString(" · "))
+        when {
+            resting -> {
+                // Countdown in the header, a bar that drains, and what comes next.
+                val total = (i.restTotal ?: (i.restEnd!! - now)).coerceAtLeast(1L)
+                val left = i.restEnd!! - now
+                val text = i.exName?.let { "Up next: $it · ${i.setLine}" } ?: "Rest, then finish when you're ready."
+                b.setContentTitle("Resting · ${fmtLeft(left)} left").setContentText(text).setStyle(Notification.BigTextStyle().bigText(text))
+                    .setWhen(i.restEnd).setChronometerCountDown(true)
+                    .setProgress(1000, (1000 * (total - left) / total).toInt().coerceIn(0, 1000), false)
+                b.addAction(action(ctx, "−15s", "minus", 21)); b.addAction(action(ctx, "+15s", "plus", 22)); b.addAction(action(ctx, "Skip rest", "skip", 23))
+            }
+            i.exName != null -> {
+                b.setContentTitle(i.exName).setContentText(i.setLine).setWhen(i.start)
+                if (i.total > 0) b.setProgress(i.total, i.done, false)
+                b.addAction(action(ctx, "Complete set", "done", 24))
+            }
+            else -> {
+                val text = if (i.total > 0) "All ${i.total} sets done. Finish when you're ready." else "Add an exercise to get going."
+                b.setContentTitle(i.title).setContentText(text).setWhen(i.start)
+                if (i.total > 0) b.setProgress(i.total, i.done, false)
+            }
         }
-        if (i.total > 0) b.setProgress(i.total, i.done, false)
         // Android 16: show as a Live Update (status bar chip with the timer).
         if (Build.VERSION.SDK_INT >= 36) b.addExtras(android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
-        runCatching { nm.notify(ID, b.build()) }
+        return b.build()
+    }
+
+    private fun fmtLeft(ms: Long): String { val s = ((ms + 999) / 1000).toInt(); return "${s / 60}:${(s % 60).toString().padStart(2, '0')}" }
+}
+
+/** Keeps Lift Log running while a workout is in progress, showing [LiveNotifier]'s notification. */
+class WorkoutService : android.app.Service() {
+    override fun onBind(intent: Intent?): android.os.IBinder? = null
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val n = LiveNotifier.current ?: run { stopSelf(); return START_NOT_STICKY }
+        val type = if (Build.VERSION.SDK_INT >= 34) android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
+        runCatching { androidx.core.app.ServiceCompat.startForeground(this, LiveNotifier.ID, n, type) }.onFailure { stopSelf() }
+        return START_NOT_STICKY
     }
 }
 
-/** Buttons on the notification. If the app has been closed there is no workout state in memory to change. */
+/** "Rest over" as a heads-up on the lock screen, with the next set and a button to complete it. */
+object RestOver {
+    const val CHANNEL = "rest"
+    const val ID = 7
+    fun post(ctx: Context) {
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        if (nm.getNotificationChannel(CHANNEL) == null) {
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, "Rest timer", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Tells you when your rest is over"; enableVibration(true); vibrationPattern = longArrayOf(0, 250, 120, 250)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
+        }
+        val line = LiveNotifier.nextLine(ctx)
+        val open = PendingIntent.getActivity(ctx, 25, Intent(ctx, MainActivity::class.java).putExtra(LiveBridge.EXTRA, "open")
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val b = Notification.Builder(ctx, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_timer)
+            .setContentTitle("Rest over")
+            .setContentText(line?.let { "Next: $it" } ?: "Time for your next set")
+            .setAutoCancel(true).setTimeoutAfter(5 * 60_000L)
+            .setContentIntent(open)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setCategory(Notification.CATEGORY_ALARM)
+        if (line != null) b.addAction(LiveNotifier.action(ctx, "Complete set", "done", 26))
+        runCatching { nm.notify(ID, b.build()) }
+    }
+    fun clear(ctx: Context) { ctx.getSystemService(NotificationManager::class.java)?.cancel(ID) }
+}
+
+/** Buttons on the notifications. If the app has been closed there is no workout state in memory to change. */
 class LiveActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val a = intent.getStringExtra(LiveBridge.EXTRA) ?: return
-        if (!LiveBridge.send(a)) LiveNotifier.show(context, null)
+        RestOver.clear(context)
+        if (!LiveBridge.send(a)) LiveNotifier.orphan(context)
     }
 }
 

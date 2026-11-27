@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Android 16 Live Updates: the workout timer as a status bar chip. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Keeps a workout running (timer, rest alerts, notification buttons) while the phone is locked. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Lets the Hevy guide open Hevy so the user can export from it. -->
     <queries>
@@ -30,6 +33,19 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Routine share links: the share page opens liftlog://r?d=…; the https link works where the user allows it. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="liftlog" android:host="r" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="dhammishivam.github.io" android:pathPrefix="/lift-log/r" />
             </intent-filter>
         </activity>
 
@@ -76,6 +92,14 @@
                 <data android:mimeType="application/json" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".WorkoutService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Workout in progress: shows the workout timer, rest countdown and next set, with buttons to complete a set or change the rest, while the user trains with the phone locked." />
+        </service>
         <receiver android:name=".RestAlarmReceiver" android:exported="false" />
         <receiver android:name=".LiveActionReceiver" android:exported="false" />
         <receiver android:name=".LiftWidget" android:exported="false" android:label="${appLabel}">

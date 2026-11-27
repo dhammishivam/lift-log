@@ -180,12 +180,19 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     }
 
     override fun shareCard(card: ShareCard): Boolean = ShareImage.share(act, card)
+    override fun shareText(text: String, title: String): Boolean = runCatching {
+        act.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), title)); true
+    }.getOrDefault(false)
 
     override fun mascot(kind: String): ImageBitmap? {
         val res = when (kind) { "titan" -> R.drawable.mascot_titan; "classic" -> R.drawable.mascot_classic; "pump" -> R.drawable.mascot_pump; "champ" -> R.drawable.mascot_champ; else -> return null }
         return runCatching { BitmapFactory.decodeResource(act.resources, res)?.asImageBitmap() }.getOrNull()
     }
-    fun onForeground() { foreground = true; cancel() }
+    /** Rest is over: a buzz in the app, or the lock-screen "Rest over" alert when Lift Log is in the background. */
+    override fun restOver() {
+        if (foreground) alert() else { cancel(); RestOver.post(ctx) }
+    }
+    fun onForeground() { foreground = true; cancel(); RestOver.clear(ctx) }
     fun onBackground() { foreground = false; schedule() }
 
     private fun pending(): PendingIntent = PendingIntent.getBroadcast(ctx, 7, Intent(ctx, RestAlarmReceiver::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -201,25 +208,7 @@ class AndroidPlatform(private val act: ComponentActivity) : Platform {
     private fun cancel() { runCatching { (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending()) } }
 }
 
-/** Posts "Rest over" when the rest timer ends while Lift Log is in the background. */
+/** Posts "Rest over" when the rest timer ends while Lift Log isn't running its own timer (e.g. it was stopped). */
 class RestAlarmReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel(CHANNEL) == null) {
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, "Rest timer", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Tells you when your rest is over"; enableVibration(true); vibrationPattern = longArrayOf(0, 250, 120, 250)
-            })
-        }
-        val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
-        val n = android.app.Notification.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_timer)
-            .setContentTitle("Rest over")
-            .setContentText("Time for your next set")
-            .setAutoCancel(true)
-            .setContentIntent(open)
-            .setCategory(android.app.Notification.CATEGORY_ALARM)
-            .build()
-        runCatching { nm.notify(7, n) }
-    }
-    companion object { const val CHANNEL = "rest" }
+    override fun onReceive(context: Context, intent: Intent) = RestOver.post(context)
 }

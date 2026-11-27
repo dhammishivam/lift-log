@@ -16,6 +16,12 @@ data class LiveInfo(
     val next: String?,
     val done: Int,
     val total: Int,
+    /** Exercise of the next set, e.g. "Bench Press (Barbell)". */
+    val exName: String? = null,
+    /** The next set on its own: "Set 2 of 4 · 60 kg × 8", "Warm-up · 20 kg × 10". */
+    val setLine: String? = null,
+    /** Length of the running rest in ms, for the countdown bar. */
+    val restTotal: Long? = null,
 )
 
 /** Everything the shared code needs from the phone. Android implements it now; iOS has a starter implementation. */
@@ -45,6 +51,8 @@ interface Platform {
 
     /** Vibrate and beep (rest over). */
     fun alert()
+    /** The rest timer ran out. In the background Android shows a "Rest over" notification instead. */
+    fun restOver() = alert()
     /** When the rest timer ends (null = no rest running). Used to alert while the app is in the background. */
     fun setRestEnd(atMillis: Long?)
 
@@ -61,6 +69,8 @@ interface Platform {
     fun updateWidget(info: WidgetInfo) {}
     /** A mascot picture for celebrations ("titan", "classic", "pump", "champ"), or null. */
     fun mascot(kind: String): ImageBitmap? = null
+    /** Opens the share sheet with [text]. False where there is none. */
+    fun shareText(text: String, title: String): Boolean = false
     /** Shares a workout image. Returns false where sharing images isn't available. */
     fun shareCard(card: ShareCard): Boolean = false
     /** Other apps can hand their exports straight to Lift Log (Android's share and open-with). */

@@ -107,6 +107,7 @@ private fun ScreenHost(st: AppState, s: Screen) {
         is Screen.HevyGuide -> HevyGuideScreen(st)
         is Screen.Stats -> StatsScreen(st, s)
         is Screen.Programs -> ProgramsScreen(st, s)
+        is Screen.SharedRoutineView -> SharedRoutineScreen(st, s)
     }
 }
 

@@ -53,6 +53,8 @@ sealed class Screen {
         var days by mutableStateOf(p?.days); var pick by mutableStateOf<String?>(null)
     }
     class PinEditor(val eid: String, t: String) : Screen() { var t by mutableStateOf(t) }
+    /** A routine someone shared as a link, before it's added. */
+    class SharedRoutineView(val r: SharedRoutine) : Screen()
 }
 
 class AppState(val platform: Platform, val store: Store, val scope: CoroutineScope) {
@@ -128,7 +130,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
 
     fun tick() {
         now = nowMs()
-        if (restEnd > 0 && now >= restEnd) { stopRest(); platform.alert(); say("Rest over. Next set!") }
+        if (restEnd > 0 && now >= restEnd) { stopRest(); platform.restOver(); say("Rest over. Next set!") }
         val t = timer
         if (t != null && t.tgt > 0 && now - t.start >= t.tgt * 1000) { platform.alert(); finishTimer(true) }
     }
@@ -158,6 +160,7 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
         val a = data.active ?: return null
         if (a.editId != null) return null
         val total = a.exercises.sumOf { it.sets.size }; val done = a.exercises.sumOf { e -> e.sets.count { it.done == true } }
+        var exName: String? = null; var setLine: String? = null
         val next = nextSet(a)?.let { (ei, si) ->
             val it = a.exercises[ei]; val x = idx.exOf(it.eid); val T = typeOf(x.type)
             val pv = prevFor(idx.prevSets(it.eid, a.start, a.editId), it.sets, si); val sg = idx.sugFor(a, ei, si)
@@ -165,9 +168,16 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
             T.f.forEach { f -> if (fieldVal(q, f, lb) == null) parseNum(phv(it, si, f, pv, sg, lb))?.let { v -> q = withField(q, f, v, lb) } }
             val vals = if (T.f.any { f -> fieldVal(q, f, lb) != null }) " · " + fmtSet(x.type, q, lb) else ""
             val lab = when (it.sets[si].t) { "w" -> "warm-up"; "d" -> "drop set"; "f" -> "failure set"; else -> "set ${setLabel(it.sets, si)}" }
+            val working = it.sets.count { s -> s.t == "n" }
+            exName = x.name
+            setLine = when (it.sets[si].t) {
+                "w" -> "Warm-up"; "d" -> "Drop set"; "f" -> "Failure set"
+                else -> "Set ${setLabel(it.sets, si)}" + (if (working > 1) " of $working" else "")
+            } + vals
             "${x.name} · $lab$vals"
         }
-        return LiveInfo(a.title?.ifBlank { null } ?: defTitle(), a.start, restEnd.takeIf { it > 0 }, next, done, total)
+        val resting = restEnd.takeIf { it > 0 }
+        return LiveInfo(a.title?.ifBlank { null } ?: defTitle(), a.start, resting, next, done, total, exName, setLine, resting?.let { restTotal })
     }
 
     /** Taps from the notification and the widget. */
@@ -179,8 +189,28 @@ class AppState(val platform: Platform, val store: Store, val scope: CoroutineSco
             action == "done" -> data.active?.let { a -> nextSet(a)?.let { (ei, si) -> checkSet(this, ei, si) } }
             action == "open" -> if (data.active != null) openLive()
             action == "empty" -> { tab = Tab.Workout; startWorkout { Active(id = "w_" + rid(), start = nowMs(), title = "") } }
+            action.startsWith("route:") -> openRoutineLink(action.removePrefix("route:"))
             action.startsWith("start:") -> data.routines[action.removePrefix("start:")]?.let { r -> tab = Tab.Workout; startWorkout { fromTemplate(r.name, r.id, r.exercises) } }
         }
+    }
+
+    /** Opens a shared routine link (from a deep link or pasted text). */
+    fun openRoutineLink(text: String): Boolean {
+        val r = parseRoutineLink(text) ?: run { say("That isn't a Lift Log routine link"); return false }
+        stack.removeAll { it is Screen.SharedRoutineView }; push(Screen.SharedRoutineView(r)); return true
+    }
+
+    fun shareRoutine(r: Routine) {
+        val text = "Here's my “${r.name}” routine on Lift Log: ${routineLink(idx, r, lb)}"
+        if (!platform.shareText(text, "Share routine")) say("Sharing isn't available here")
+    }
+
+    /** Adds a shared routine (and any custom exercises it needs); [start] also starts it. */
+    fun addShared(s: Screen.SharedRoutineView, start: Boolean) {
+        val (r, made) = adoptShared(idx, s.r) { rid() }
+        made.forEach { store.putCustom(it) }
+        store.putRoutine(r); close(s); tab = Tab.Workout
+        if (start) startWorkout { fromTemplate(r.name, r.id, r.exercises) } else say("“${r.name}” added to your routines")
     }
 
     fun shareWorkout(w: Workout, dark: Boolean) {

@@ -28,6 +28,9 @@ class MainActivity : ComponentActivity() {
 
     /** Taps on the workout notification and the home screen widget. Shared files come in through ImportActivity. */
     private fun handleIntent(i: Intent?) {
+        // A routine link: liftlog://r?d=… from the share page, or the https link itself.
+        val link = i?.data?.takeIf { i.action == Intent.ACTION_VIEW && (it.scheme == "liftlog" || it.path.orEmpty().startsWith("/lift-log/r")) }
+        if (link != null) { i.data = null; LiveBridge.send("route:$link"); return }
         val a = i?.getStringExtra(LiveBridge.EXTRA) ?: return
         i.removeExtra(LiveBridge.EXTRA)
         LiveBridge.send(a)
@@ -35,6 +38,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         LiveBridge.detach()
+        // Swiped away mid-workout: nothing is left to answer the notification's buttons.
+        if (isFinishing) LiveNotifier.orphan(applicationContext)
         super.onDestroy()
     }
 

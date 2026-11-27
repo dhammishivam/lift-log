@@ -29,9 +29,13 @@
 <ul>
   <li><b>Notifications and alarms:</b> to tell you when a rest timer ends while the app is in the background.</li>
   <li><b>Vibration:</b> to buzz when a rest timer ends.</li>
+  <li><b>Foreground service:</b> keeps a workout you're logging running (timer, rest countdown and the notification's buttons) while your phone is locked. It runs only during a workout.</li>
   <li><b>Photos:</b> only the photos you pick for progress pictures, through Android's photo picker. Copies are kept inside the app.</li>
   <li><b>Internet:</b> used only to send crash reports (see below). None of your workout data is sent.</li>
 </ul>
+
+<h2>Sharing a routine</h2>
+<p>When you share a routine, the routine (its name, exercises, sets, rest times and notes) is written into the link itself, after the # sign. Browsers don't send that part to any server, so the routine goes only to the people you send the link to. Lift Log doesn't keep a copy anywhere.</p>
 
 <h2>Crash reports</h2>
 <p>Lift Log uses Firebase Crashlytics, a Google service, to receive a report when the app crashes. A crash report contains the error details, your device model, Android version, app version and a random installation ID created by Crashlytics. It never contains your workouts, measurements, photos or anything else you entered. We use crash reports only to find and fix bugs.</p>
